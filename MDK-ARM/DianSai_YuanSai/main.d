@@ -37,3 +37,13 @@ diansai_yuansai\main.o: ../Core/Inc/i2c.h
 diansai_yuansai\main.o: ../Core/Inc/tim.h
 diansai_yuansai\main.o: ../Core/Inc/usart.h
 diansai_yuansai\main.o: ../Core/Inc/gpio.h
+diansai_yuansai\main.o: ../User_Code/headfile.h
+diansai_yuansai\main.o: ../User_Code/oled.h
+diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+diansai_yuansai\main.o: ../User_Code/test.h
+diansai_yuansai\main.o: ../User_Code/headfile.h
+diansai_yuansai\main.o: ../User_Code/motor.h
+diansai_yuansai\main.o: ../User_Code/Serial.h

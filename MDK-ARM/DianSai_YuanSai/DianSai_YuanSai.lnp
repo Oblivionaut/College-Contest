@@ -26,6 +26,10 @@
 "diansai_yuansai\stm32f4xx_hal_tim_ex.o"
 "diansai_yuansai\stm32f4xx_hal_uart.o"
 "diansai_yuansai\system_stm32f4xx.o"
+"diansai_yuansai\oled.o"
+"diansai_yuansai\test.o"
+"diansai_yuansai\motor.o"
+"diansai_yuansai\serial.o"
 --strict --scatter "DianSai_YuanSai\DianSai_YuanSai.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

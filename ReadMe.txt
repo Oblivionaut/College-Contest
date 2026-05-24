@@ -7,21 +7,23 @@ IN脚，控制正反转
 AIN1：PB0 (推挽输出，默认低电平，不上拉不下拉)
 AIN2：PB1 同上
 
-BIN1：PB2 (推挽输出，默认低电平，不上拉不下拉)
-BIN2：PB3 同上
+BIN1：PB4 (推挽输出，默认低电平，不上拉不下拉)
+BIN2：PB5 同上
 
 
 E脚编码器引脚，测速，判断方向
 
-E1A： PD12 编码器模式，上拉推挽输出，最大速度
+TIM4：
+E1A： PD12 编码器模式，上拉推挽输出，最大速度 
 E1B： PD13
 
+TIM1：
 E2A： PE9 编码器模式，上拉推挽输出，最大速度
 E2B： PE11
 
 k230
-tx：PC7（USART1_RX）
-rx：PC6(USART1_TX)
+tx：PC7（USART6_RX）
+rx：PC6(USART6_TX)
 
 
 
@@ -44,3 +46,15 @@ TX：PA3
 RX：PD8
 TX：PD9
 
+测试USART4
+
+
+PE2 按键
+
+寻迹（八路）
+0~8
+PC8，PC9，PC10，PC11，PC12，PC13，PD2，PD3
+i2c：E5,E6
+
+
+声光：PD14， PD15
