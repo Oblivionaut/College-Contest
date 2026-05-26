@@ -121,13 +121,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  Tracing_Read();
 //	  Serial_Printf("%f,%f,%f,%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out,MotorB.Target, MotorB.Actual, MotorB.Out);
-	  for(int i = 0; i < 8; i++)
-	  {
-		OLED_ShowNum(1, i+1, GPIO_PIN_Status[i], 1);
-	  }
-	  OLED_ShowSignedNum(2, 1, Tracing_Error_Get(), 2);
+
+	  OLED_Tracing_Debug();
+	  Tracing_Run();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -186,8 +183,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM2)
   {
-//	  Motor_Pid();
-//	Motor_SetSpeed(20,20);
+	  Motor_Pid();
+
 	  
 	  
   }

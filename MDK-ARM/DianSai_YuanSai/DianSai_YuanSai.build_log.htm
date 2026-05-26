@@ -27,6 +27,34 @@ Project File Date:  05/26/2026
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'DianSai_YuanSai'
+compiling tracing.c...
+..\User_Code\motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
+  int16_t EncoderA_Get_CNT();
+..\User_Code\motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
+  int16_t EncoderB_Get_CNT();
+..\User_Code\tracing.c(178): warning:  #1-D: last line of file ends without a newline
+  }
+..\User_Code\tracing.c: 3 warnings, 0 errors
+compiling Serial.c...
+..\User_Code\motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
+  int16_t EncoderA_Get_CNT();
+..\User_Code\motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
+  int16_t EncoderB_Get_CNT();
+..\User_Code\Serial.c: 2 warnings, 0 errors
+compiling motor.c...
+..\User_Code\motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
+  int16_t EncoderA_Get_CNT();
+..\User_Code\motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
+  int16_t EncoderB_Get_CNT();
+..\User_Code\motor.c(156): warning:  #1-D: last line of file ends without a newline
+  }
+..\User_Code\motor.c: 3 warnings, 0 errors
+compiling test.c...
+..\User_Code\motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
+  int16_t EncoderA_Get_CNT();
+..\User_Code\motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
+  int16_t EncoderB_Get_CNT();
+..\User_Code\test.c: 2 warnings, 0 errors
 compiling main.c...
 ../User_Code/motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
   int16_t EncoderA_Get_CNT();
@@ -34,9 +62,9 @@ compiling main.c...
   int16_t EncoderB_Get_CNT();
 ../Core/Src/main.c: 2 warnings, 0 errors
 linking...
-Program Size: Code=11554 RO-data=1970 RW-data=84 ZI-data=2452  
+Program Size: Code=19070 RO-data=2522 RW-data=88 ZI-data=2448  
 FromELF: creating hex file...
-"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 2 Warning(s).
+"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 12 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -59,7 +87,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE@5.4.0
       Include file:  CMSIS/Core/Include/tz_context.h
-Build Time Elapsed:  00:00:05
+Build Time Elapsed:  00:00:08
 </pre>
 </body>
 </html>
