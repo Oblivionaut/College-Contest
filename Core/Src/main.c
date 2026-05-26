@@ -46,7 +46,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-volatile int16_t Speed = 0;	//编码器测速测试变量
+volatile int16_t Speed = 20;	//编码器测速测试变量
 volatile int16_t Location = 0;
 uint16_t Temp = 0;
 uint8_t Key_Status = 0;
@@ -106,31 +106,28 @@ int main(void)
 	OLED_Init();
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-	MotorA.Kp = 3.0;
-	MotorA.Ki = 0.1;
-	MotorA.Kd = 0;
-	MotorA.Target = 20;
+	HAL_TIM_Encoder_Start(&htim1, TIM_CHANNEL_ALL);
+//	MotorA.Kp = 3.0;
+//	MotorA.Ki = 0.1;
+//	MotorA.Kd = 0;
+	PID_SET(&MotorA, 3.0, 0.1, 0);
+	PID_SET(&MotorB, 2.0, 0.1, 0);
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	OLED_ShowSignedNum(1,1,MotorA.Target,5);
-	  OLED_ShowSignedNum(3,1,MotorA.Target,5);
-	Key_Status = KeyScan();
-	  if(Key_Status == 1)
-		{
-			if(MotorA.Target <= 60)
-			{
-				MotorA.Target += 20;
-			}else if(MotorA.Target == 80)
-			{
-				MotorA.Target = 20;
-			}
-		}
-	  Serial_Printf("%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out);
+	  Tracing_Read();
+//	  Serial_Printf("%f,%f,%f,%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out,MotorB.Target, MotorB.Actual, MotorB.Out);
+	  for(int i = 0; i < 8; i++)
+	  {
+		OLED_ShowNum(1, i+1, GPIO_PIN_Status[i], 1);
+	  }
+	  OLED_ShowSignedNum(2, 1, Tracing_Error_Get(), 2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -189,22 +186,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM2)
   {
-	  
-	MotorA.Actual = Encoder_Get_CNT();
-	MotorA.Error1 = MotorA.Error0;  
-	MotorA.Error0 = MotorA.Target - MotorA.Actual;
-	if(MotorA.Ki != 0)
-	{
-		MotorA.ErrorInt += MotorA.Error0;
-	}
-	else
-	{
-		MotorA.ErrorInt = 0;
-	}
-	MotorA.Out = MotorA.Kp * MotorA.Error0 + MotorA.Ki * MotorA.ErrorInt + MotorA.Kd * (MotorA.Error0 - MotorA.Error1);  
-	if(MotorA.Out > 100)MotorA.Out = 100;
-	if(MotorA.Out < -100)MotorA.Out = -100;
-	Motor_SetPWM1(MotorA.Out);
+//	  Motor_Pid();
+//	Motor_SetSpeed(20,20);
 	  
 	  
   }

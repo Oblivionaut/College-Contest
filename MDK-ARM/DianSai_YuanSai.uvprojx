@@ -997,6 +997,16 @@
               <FileType>5</FileType>
               <FilePath>..\User_Code\Serial.h</FilePath>
             </File>
+            <File>
+              <FileName>tracing.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User_Code\tracing.c</FilePath>
+            </File>
+            <File>
+              <FileName>tracing.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\User_Code\tracing.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

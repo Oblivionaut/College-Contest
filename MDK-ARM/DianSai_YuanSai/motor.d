@@ -45,3 +45,4 @@ diansai_yuansai\motor.o: ..\User_Code\headfile.h
 diansai_yuansai\motor.o: ..\User_Code\motor.h
 diansai_yuansai\motor.o: ../Core/Inc/tim.h
 diansai_yuansai\motor.o: ..\User_Code\Serial.h
+diansai_yuansai\motor.o: ..\User_Code\tracing.h

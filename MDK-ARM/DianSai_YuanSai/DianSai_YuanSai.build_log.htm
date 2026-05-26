@@ -22,19 +22,21 @@ Dialog DLL:      TCM.DLL V1.56.6.0
  
 <h2>Project:</h2>
 F:\F103C8T6\DianSai_YuanSai\MDK-ARM\DianSai_YuanSai.uvprojx
-Project File Date:  05/24/2026
+Project File Date:  05/26/2026
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'DianSai_YuanSai'
 compiling main.c...
-../User_Code/motor.h(5): warning:  #1295-D: Deprecated declaration Encoder_Get_CNT - give arg types
-  int16_t Encoder_Get_CNT();
-../Core/Src/main.c: 1 warning, 0 errors
+../User_Code/motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
+  int16_t EncoderA_Get_CNT();
+../User_Code/motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
+  int16_t EncoderB_Get_CNT();
+../Core/Src/main.c: 2 warnings, 0 errors
 linking...
-Program Size: Code=19052 RO-data=2520 RW-data=32 ZI-data=2416  
+Program Size: Code=11554 RO-data=1970 RW-data=84 ZI-data=2452  
 FromELF: creating hex file...
-"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 1 Warning(s).
+"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 2 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -57,7 +59,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE@5.4.0
       Include file:  CMSIS/Core/Include/tz_context.h
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:05
 </pre>
 </body>
 </html>

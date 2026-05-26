@@ -47,3 +47,4 @@ diansai_yuansai\main.o: ../User_Code/test.h
 diansai_yuansai\main.o: ../User_Code/headfile.h
 diansai_yuansai\main.o: ../User_Code/motor.h
 diansai_yuansai\main.o: ../User_Code/Serial.h
+diansai_yuansai\main.o: ../User_Code/tracing.h

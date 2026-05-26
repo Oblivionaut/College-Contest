@@ -12,5 +12,6 @@
 #include "motor.h"
 #include "tim.h"
 #include "Serial.h"
+#include "tracing.h"
 
 #endif
