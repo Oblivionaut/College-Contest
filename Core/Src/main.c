@@ -47,6 +47,7 @@
 
 /* USER CODE BEGIN PV */
 volatile int16_t Speed = 20;	//编码器测速测试变量
+	  static uint8_t test_cnt = 0;
 volatile int16_t Location = 0;
 uint16_t Temp = 0;
 uint8_t Key_Status = 0;
@@ -112,6 +113,7 @@ int main(void)
 //	MotorA.Kp = 3.0;
 //	MotorA.Ki = 0.1;
 //	MotorA.Kd = 0;
+	GY87_Init();
 	PID_SET(&MotorA, 3.0, 0.1, 0);
 	PID_SET(&MotorB, 2.0, 0.1, 0);
 	
@@ -123,8 +125,8 @@ int main(void)
   {
 //	  Serial_Printf("%f,%f,%f,%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out,MotorB.Target, MotorB.Actual, MotorB.Out);
 
-	  OLED_Tracing_Debug();
-	  Tracing_Run();
+//	  OLED_Tracing_Debug();
+//	  Tracing_Run();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -183,9 +185,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM2)
   {
-	  Motor_Pid();
-
-	  
+//	  Motor_Pid();
+	  GY87_GetYaw();
+	test_cnt++;
+	if(test_cnt == 10)
+	{
+		GY87_Test();
+		test_cnt = 0;
+	} 
 	  
   }
 }

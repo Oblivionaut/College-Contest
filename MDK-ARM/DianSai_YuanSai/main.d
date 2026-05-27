@@ -38,6 +38,7 @@ diansai_yuansai\main.o: ../Core/Inc/tim.h
 diansai_yuansai\main.o: ../Core/Inc/usart.h
 diansai_yuansai\main.o: ../Core/Inc/gpio.h
 diansai_yuansai\main.o: ../User_Code/headfile.h
+diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 diansai_yuansai\main.o: ../User_Code/oled.h
 diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
@@ -48,3 +49,4 @@ diansai_yuansai\main.o: ../User_Code/headfile.h
 diansai_yuansai\main.o: ../User_Code/motor.h
 diansai_yuansai\main.o: ../User_Code/Serial.h
 diansai_yuansai\main.o: ../User_Code/tracing.h
+diansai_yuansai\main.o: ../User_Code/gy87.h

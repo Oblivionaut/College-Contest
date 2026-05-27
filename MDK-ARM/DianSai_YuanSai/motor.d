@@ -35,6 +35,7 @@ diansai_yuansai\motor.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_e
 diansai_yuansai\motor.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
 diansai_yuansai\motor.o: ../Core/Inc/i2c.h
 diansai_yuansai\motor.o: ../Core/Inc/main.h
+diansai_yuansai\motor.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 diansai_yuansai\motor.o: ..\User_Code\oled.h
 diansai_yuansai\motor.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 diansai_yuansai\motor.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
@@ -46,3 +47,4 @@ diansai_yuansai\motor.o: ..\User_Code\motor.h
 diansai_yuansai\motor.o: ../Core/Inc/tim.h
 diansai_yuansai\motor.o: ..\User_Code\Serial.h
 diansai_yuansai\motor.o: ..\User_Code\tracing.h
+diansai_yuansai\motor.o: ..\User_Code\gy87.h

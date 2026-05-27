@@ -1007,6 +1007,16 @@
               <FileType>5</FileType>
               <FilePath>..\User_Code\tracing.h</FilePath>
             </File>
+            <File>
+              <FileName>gy87.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User_Code\gy87.c</FilePath>
+            </File>
+            <File>
+              <FileName>gy87.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\User_Code\gy87.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

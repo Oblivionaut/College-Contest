@@ -3,6 +3,8 @@
 
 #include "stm32f4xx_hal.h"
 #include "i2c.h"
+
+#include <math.h>
 #include "oled.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -13,6 +15,7 @@
 #include "tim.h"
 #include "Serial.h"
 #include "tracing.h"
+#include "gy87.h"
 
 #define PWM_MAX 100
 
@@ -32,5 +35,11 @@
 
 
 /************************************************/
+
+#define MPU6050_ADDR   (0x68 << 1)
+
+#define HMC5883_ADDR   (0x1E << 1)
+
+
 
 #endif
