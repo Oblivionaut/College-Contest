@@ -22,8 +22,7 @@ uint8_t GPIO_PIN_Status[8] = {0};
 
 int8_t GPIO_Error[8] =
 {
-	-7, -5, -3, -1,
-	1, 3, 5, 7
+	-7, -5, -2, 0, 0, 2, 5, 7
 };
 
 int8_t Last_Error = 0;
@@ -88,10 +87,10 @@ int8_t Tracing_Error_Get(void)
 
 
 /************************************************
- * 函数名：Tracing_Run
+ * 函数名：Normal_Tracing
  * 功能  ：寻迹主函数
  ************************************************/
-void Tracing_Run(void)
+void Normal_Tracing(void)
 {
 	int8_t Error;
 
@@ -176,3 +175,31 @@ void Tracing_Run(void)
 		RightSpeed
 	);
 }
+
+void Tracing_Mode_Select(uint8_t Mode)
+{
+	switch(Mode)
+	{
+		case 0: //初始状态，停车模式
+			
+		break;
+		
+		case 1://无赛道直线行驶，碰线停车
+			
+		break;
+		
+		case 2://无赛道发车，一圈后停车
+			
+		break;
+		
+		case 3://无赛道发车，绕8字一圈后停车
+			
+		break;
+		
+		case 4://无赛道发车，绕8字四圈后停车
+			
+		break;
+	}
+}
+
+

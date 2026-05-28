@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "Key.h"
 #include "test.h"
 #include "motor.h"
 #include "tim.h"
@@ -17,7 +18,6 @@
 #include "tracing.h"
 #include "gy87.h"
 
-#define PWM_MAX 100
 
 /**************** 参数区（重点） ****************/
 

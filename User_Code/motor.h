@@ -23,7 +23,7 @@ typedef struct
 extern PID MotorA;
 extern PID MotorB;
 void Motor_Pid(void);
-void Motor_SetSpeed(int8_t SpeedA, int8_t SpeedB);
+void Motor_SetSpeed(int16_t SpeedA, int16_t SpeedB);
 void PID_SET(PID * Motor, float KP, float KI, float KD);
 
 
@@ -38,4 +38,6 @@ void PID_SET(PID * Motor, float KP, float KI, float KD);
 
 
 
+
 #endif
+

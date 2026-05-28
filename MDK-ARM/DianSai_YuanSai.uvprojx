@@ -1017,6 +1017,16 @@
               <FileType>5</FileType>
               <FilePath>..\User_Code\gy87.h</FilePath>
             </File>
+            <File>
+              <FileName>Key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User_Code\Key.c</FilePath>
+            </File>
+            <File>
+              <FileName>Key.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\User_Code\Key.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

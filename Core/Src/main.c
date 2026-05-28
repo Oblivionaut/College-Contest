@@ -114,9 +114,9 @@ int main(void)
 //	MotorA.Ki = 0.1;
 //	MotorA.Kd = 0;
 	GY87_Init();
-	PID_SET(&MotorA, 3.0, 0.1, 0);
-	PID_SET(&MotorB, 2.0, 0.1, 0);
-	
+	PID_SET(&MotorA, 95.0, 1.5, 0.0);//95.0, 1.5, 0.0
+	PID_SET(&MotorB, 95.0, 1.5, 0.0);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,7 +126,7 @@ int main(void)
 //	  Serial_Printf("%f,%f,%f,%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out,MotorB.Target, MotorB.Actual, MotorB.Out);
 
 //	  OLED_Tracing_Debug();
-//	  Tracing_Run();
+	  Normal_Tracing();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -185,12 +185,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM2)
   {
-//	  Motor_Pid();
-	  GY87_GetYaw();
+	  Motor_Pid();
+//	  GY87_GetYaw();
 	test_cnt++;
-	if(test_cnt == 10)
+	if(test_cnt == 100)
 	{
-		GY87_Test();
+//		if(MotorA.Target < 70){
+//			MotorA.Target += 10;
+//			MotorB.Target += 10;
+//		}else
+//		{
+//			MotorA.Target = 10;
+//			MotorB.Target = 10;
+//		}
 		test_cnt = 0;
 	} 
 	  

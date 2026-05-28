@@ -44,9 +44,10 @@ diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 diansai_yuansai\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+diansai_yuansai\main.o: ../User_Code/Key.h
 diansai_yuansai\main.o: ../User_Code/test.h
+diansai_yuansai\main.o: ../User_Code/Tracing.h
 diansai_yuansai\main.o: ../User_Code/headfile.h
 diansai_yuansai\main.o: ../User_Code/motor.h
 diansai_yuansai\main.o: ../User_Code/Serial.h
-diansai_yuansai\main.o: ../User_Code/tracing.h
 diansai_yuansai\main.o: ../User_Code/gy87.h
