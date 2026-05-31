@@ -12,7 +12,7 @@
   * This software is licensed under terms that can be found in the LICENSE file
   * in the root directory of this software component.
   * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
+  *  
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -36,6 +36,11 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define TEST_TARGET_YAW 100.0f //角度环测试目标角度
+#define MOTOR_DIRECT_TEST 0
+#define MOTOR_DIRECT_SPEED_A 8.0f
+#define MOTOR_DIRECT_SPEED_B 8.0f
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,6 +53,7 @@
 /* USER CODE BEGIN PV */
 volatile int16_t Speed = 20;	//编码器测速测试变量
 	  static uint8_t test_cnt = 0;
+volatile uint8_t Debug_Print_Flag = 0;
 volatile int16_t Location = 0;
 uint16_t Temp = 0;
 uint8_t Key_Status = 0;
@@ -105,7 +111,6 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 	OLED_Init();
-	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
@@ -116,6 +121,9 @@ int main(void)
 	GY87_Init();
 	PID_SET(&MotorA, 95.0, 1.5, 0.0);//95.0, 1.5, 0.0
 	PID_SET(&MotorB, 95.0, 1.5, 0.0);
+	Angle_ResetController();
+	Motor_Stop();
+	HAL_TIM_Base_Start_IT(&htim2);
 
   /* USER CODE END 2 */
 
@@ -123,10 +131,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  Serial_Printf("%f,%f,%f,%f,%f,%f\r\n",MotorA.Target, MotorA.Actual, MotorA.Out,MotorB.Target, MotorB.Actual, MotorB.Out);
+	  if(Debug_Print_Flag)
+	  {
+		  Debug_Print_Flag = 0;
+		  OLED_Angle_Debug(TEST_TARGET_YAW);
+	  }
 
 //	  OLED_Tracing_Debug();
-	  Normal_Tracing();
+//	  Normal_Tracing();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -185,19 +197,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM2)
   {
+	  
+#if MOTOR_DIRECT_TEST
+	Motor_SetSpeed(MOTOR_DIRECT_SPEED_A, MOTOR_DIRECT_SPEED_B);
+#else
+	Angle_Hold(TEST_TARGET_YAW);
+#endif
 	  Motor_Pid();
-//	  GY87_GetYaw();
 	test_cnt++;
-	if(test_cnt == 100)
+
+	if(test_cnt == 20)
 	{
-//		if(MotorA.Target < 70){
-//			MotorA.Target += 10;
-//			MotorB.Target += 10;
-//		}else
-//		{
-//			MotorA.Target = 10;
-//			MotorB.Target = 10;
-//		}
+		Debug_Print_Flag = 1;
 		test_cnt = 0;
 	} 
 	  

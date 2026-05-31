@@ -1,5 +1,5 @@
 #include "headfile.h"
-
+uint8_t Touch_Flag = 0;
 GPIO_TypeDef * GPIOx[8] =
 {
 	GPIOC, GPIOC, GPIOC, GPIOC,
@@ -181,11 +181,28 @@ void Tracing_Mode_Select(uint8_t Mode)
 	switch(Mode)
 	{
 		case 0: //初始状态，停车模式
-			
+			Motor_Stop();
 		break;
 		
 		case 1://无赛道直线行驶，碰线停车
 			
+			for(int i = 0; i < 8; i++)   
+			{
+				if(GPIO_PIN_Status[i] == 0)
+				{
+					Touch_Flag = 1;
+				}
+			}
+			
+			if(!Touch_Flag)
+			{
+				MotorA.Target = 20;
+				MotorB.Target = 20;
+			}
+			else if(Touch_Flag)
+			{
+				
+			}
 		break;
 		
 		case 2://无赛道发车，一圈后停车

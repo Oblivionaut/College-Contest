@@ -13,7 +13,7 @@ void Normal_Tracing(void);
 int8_t Tracing_Error_Get(void);
 void Tracing_Mode_Select(uint8_t Mode);
 
-
+extern uint8_t Touch_Flag;
 
 
 

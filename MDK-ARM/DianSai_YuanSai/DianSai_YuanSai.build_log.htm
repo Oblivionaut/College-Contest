@@ -17,7 +17,7 @@ Library Manager: ArmAr.exe V5.06 update 5 (build 528)
 Hex Converter:   FromElf.exe V5.06 update 5 (build 528)
 CPU DLL:         SARMCM3.DLL V5.43.0.0
 Dialog DLL:      DCM.DLL V1.17.5.0
-Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.3.1.0
+Target DLL:      CMSIS_AGDI.dll V1.33.24.0
 Dialog DLL:      TCM.DLL V1.56.6.0
  
 <h2>Project:</h2>
@@ -27,16 +27,17 @@ Project File Date:  05/28/2026
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 5 (build 528)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'DianSai_YuanSai'
+compiling main.c...
+compiling motor.c...
+compiling Key.c...
+compiling tracing.c...
+compiling Serial.c...
+compiling test.c...
 compiling gy87.c...
-..\User_Code\motor.h(5): warning:  #1295-D: Deprecated declaration EncoderA_Get_CNT - give arg types
-  int16_t EncoderA_Get_CNT();
-..\User_Code\motor.h(6): warning:  #1295-D: Deprecated declaration EncoderB_Get_CNT - give arg types
-  int16_t EncoderB_Get_CNT();
-..\User_Code\gy87.c: 2 warnings, 0 errors
 linking...
-Program Size: Code=14682 RO-data=450 RW-data=136 ZI-data=2496  
+Program Size: Code=20450 RO-data=2034 RW-data=80 ZI-data=2584  
 FromELF: creating hex file...
-"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 2 Warning(s).
+"DianSai_YuanSai\DianSai_YuanSai.axf" - 0 Error(s), 0 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -59,7 +60,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE@5.4.0
       Include file:  CMSIS/Core/Include/tz_context.h
-Build Time Elapsed:  00:00:06
+Build Time Elapsed:  00:00:05
 </pre>
 </body>
 </html>

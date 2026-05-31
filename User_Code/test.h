@@ -5,8 +5,9 @@
 #include "Key.h"
 #include "Tracing.h"
 void OLED_SHOW_SPEED(int16_t Speed);
-Key_State Key_Scan(void);
 void OLED_Tracing_Debug(void);
+void GY87_DebugYaw(void);
+void OLED_Angle_Debug(float TargetYaw);
 
 
 

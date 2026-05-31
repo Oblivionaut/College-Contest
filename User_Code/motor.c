@@ -15,7 +15,7 @@
  * 四倍频 = 52脉冲/圈
  *
  * PID周期:
- * 20ms
+ * 5ms
  *
  * PWM:
  * TIM3
@@ -38,7 +38,16 @@
 #define PWM_MAX                999
 
 /* PWM死区补偿 */
-#define PWM_DEADZONE           120
+#define PWM_DEADZONE           160
+
+/* 目标速度足够小时视为停止 */
+#define TARGET_ZERO_EPS        0.05f
+
+/* 目标速度大于该值才启用PWM死区补偿 */
+#define TARGET_DEADZONE_ENABLE 0.25f
+
+/* 目标为0且实际速度足够小时直接关输出 */
+#define SPEED_STOP_EPS         0.8f
 
 /* PWM输出变化限幅 */
 #define PWM_RAMP_LIMIT         120
@@ -58,6 +67,7 @@
 /* 堵转保护 */
 #define BLOCK_PWM_THRESHOLD    700
 #define BLOCK_SPEED_THRESHOLD  5
+#define BLOCK_TARGET_THRESHOLD 15.0f
 #define BLOCK_TIME_THRESHOLD   80
 
 
@@ -353,6 +363,29 @@ void Motor_Pid(void)
         P_Out_B + I_Out_B;
 
 
+    /************** 零速保持 **************/
+
+    if(MotorA.Target < TARGET_ZERO_EPS &&
+       MotorA.Target > -TARGET_ZERO_EPS &&
+       MotorA.Actual < SPEED_STOP_EPS &&
+       MotorA.Actual > -SPEED_STOP_EPS)
+    {
+        MotorA.Out = 0;
+
+        MotorA.ErrorInt = 0;
+    }
+
+    if(MotorB.Target < TARGET_ZERO_EPS &&
+       MotorB.Target > -TARGET_ZERO_EPS &&
+       MotorB.Actual < SPEED_STOP_EPS &&
+       MotorB.Actual > -SPEED_STOP_EPS)
+    {
+        MotorB.Out = 0;
+
+        MotorB.ErrorInt = 0;
+    }
+
+
     /************** 输出限幅 **************/
 
     if(MotorA.Out > PWM_MAX)
@@ -395,24 +428,26 @@ void Motor_Pid(void)
 
     /************** PWM死区补偿 **************/
 
-if(MotorA.Target != 0)
-{
-    if(MotorA.Out > 0 && MotorA.Out < PWM_DEADZONE)
-        MotorA.Out = PWM_DEADZONE;
+    if(MotorA.Target > TARGET_DEADZONE_ENABLE ||
+       MotorA.Target < -TARGET_DEADZONE_ENABLE)
+    {
+        if(MotorA.Out > 0 && MotorA.Out < PWM_DEADZONE)
+            MotorA.Out = PWM_DEADZONE;
 
-    if(MotorA.Out < 0 && MotorA.Out > -PWM_DEADZONE)
-        MotorA.Out = -PWM_DEADZONE;
-}
+        if(MotorA.Out < 0 && MotorA.Out > -PWM_DEADZONE)
+            MotorA.Out = -PWM_DEADZONE;
+    }
 
 
-if(MotorB.Target != 0)
-{
-    if(MotorB.Out > 0 && MotorB.Out < PWM_DEADZONE)
-        MotorB.Out = PWM_DEADZONE;
+    if(MotorB.Target > TARGET_DEADZONE_ENABLE ||
+       MotorB.Target < -TARGET_DEADZONE_ENABLE)
+    {
+        if(MotorB.Out > 0 && MotorB.Out < PWM_DEADZONE)
+            MotorB.Out = PWM_DEADZONE;
 
-    if(MotorB.Out < 0 && MotorB.Out > -PWM_DEADZONE)
-        MotorB.Out = -PWM_DEADZONE;
-}
+        if(MotorB.Out < 0 && MotorB.Out > -PWM_DEADZONE)
+            MotorB.Out = -PWM_DEADZONE;
+    }
 
 
     /************** 最终限幅 **************/
@@ -436,7 +471,9 @@ if(MotorB.Target != 0)
      *
      **************************************************/
 
-    if((MotorA.Out > BLOCK_PWM_THRESHOLD ||
+    if((MotorA.Target > BLOCK_TARGET_THRESHOLD ||
+        MotorA.Target < -BLOCK_TARGET_THRESHOLD) &&
+       (MotorA.Out > BLOCK_PWM_THRESHOLD ||
         MotorA.Out < -BLOCK_PWM_THRESHOLD) &&
        (MotorA.Actual < BLOCK_SPEED_THRESHOLD &&
         MotorA.Actual > -BLOCK_SPEED_THRESHOLD))
@@ -449,7 +486,9 @@ if(MotorB.Target != 0)
     }
 
 
-    if((MotorB.Out > BLOCK_PWM_THRESHOLD ||
+    if((MotorB.Target > BLOCK_TARGET_THRESHOLD ||
+        MotorB.Target < -BLOCK_TARGET_THRESHOLD) &&
+       (MotorB.Out > BLOCK_PWM_THRESHOLD ||
         MotorB.Out < -BLOCK_PWM_THRESHOLD) &&
        (MotorB.Actual < BLOCK_SPEED_THRESHOLD &&
         MotorB.Actual > -BLOCK_SPEED_THRESHOLD))
@@ -500,22 +539,54 @@ if(MotorB.Target != 0)
  *
  **************************************************/
 
-void Motor_SetSpeed(int16_t SpeedA,
-                    int16_t SpeedB)
+void Motor_SetSpeed(float SpeedA,
+                    float SpeedB)
 {
     /************** 目标限幅 **************/
 
-    if(SpeedA > 60)
-        SpeedA = 60;
+    if(SpeedA > 25.0f)
+        SpeedA = 25.0f;
 
-    if(SpeedA < -60)
-        SpeedA = -60;
+    if(SpeedA < -25.0f)
+        SpeedA = -25.0f;
 
-    if(SpeedB > 60)
-        SpeedB = 60;
+    if(SpeedB > 25.0f)
+        SpeedB = 25.0f;
 
-    if(SpeedB < -60)
-        SpeedB = -60;
+    if(SpeedB < -25.0f)
+        SpeedB = -25.0f;
+
+
+    /************** 小目标归零 **************/
+
+    if(SpeedA < TARGET_ZERO_EPS &&
+       SpeedA > -TARGET_ZERO_EPS)
+    {
+        SpeedA = 0.0f;
+    }
+
+    if(SpeedB < TARGET_ZERO_EPS &&
+       SpeedB > -TARGET_ZERO_EPS)
+    {
+        SpeedB = 0.0f;
+    }
+
+
+    /************** 换向或停车时清积分 **************/
+
+    if(SpeedA == 0.0f ||
+       (SpeedA > 0.0f && MotorA.Target < 0.0f) ||
+       (SpeedA < 0.0f && MotorA.Target > 0.0f))
+    {
+        MotorA.ErrorInt = 0;
+    }
+
+    if(SpeedB == 0.0f ||
+       (SpeedB > 0.0f && MotorB.Target < 0.0f) ||
+       (SpeedB < 0.0f && MotorB.Target > 0.0f))
+    {
+        MotorB.ErrorInt = 0;
+    }
 
 
     MotorA.Target = SpeedA;
@@ -572,6 +643,12 @@ void Motor_Stop(void)
 
     MotorA.ErrorInt = 0;
     MotorB.ErrorInt = 0;
+
+    EncoderA_Filter = 0;
+    EncoderB_Filter = 0;
+
+    Last_PWM_A = 0;
+    Last_PWM_B = 0;
 
     Motor_SetPWM1(0);
 

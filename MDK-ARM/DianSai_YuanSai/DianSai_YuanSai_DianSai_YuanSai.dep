@@ -1,7 +1,7 @@
 Dependencies for Project 'DianSai_YuanSai', Target 'DianSai_YuanSai': (DO NOT MODIFY !)
 CompilerVersion: 5060528::V5.06 update 5 (build 528)::ARMCC
 F (startup_stm32f407xx.s)(0x6A17DC10)(--cpu Cortex-M4.fp.sp -g --apcs=interwork -I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai--pd "__UVISION_VERSION SETA 543" --pd "STM32F407xx SETA 1" --pd "_RTE_ SETA 1"--list startup_stm32f407xx.lst --xref -o diansai_yuansai\startup_stm32f407xx.o --depend diansai_yuansai\startup_stm32f407xx.d)
-F (../Core/Src/main.c)(0x6A182710)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\main.o --omf_browse diansai_yuansai\main.crf --depend diansai_yuansai\main.d)
+F (../Core/Src/main.c)(0x6A1C0FF6)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\main.o --omf_browse diansai_yuansai\main.crf --depend diansai_yuansai\main.d)
 I (../Core/Inc/main.h)(0x6A1061CD)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
@@ -39,7 +39,7 @@ I (../Core/Inc/i2c.h)(0x6A116E40)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (../Core/Inc/usart.h)(0x6A116E41)
 I (../Core/Inc/gpio.h)(0x6A1061CC)
-I (../User_Code/headfile.h)(0x6A16EE4A)
+I (../User_Code/headfile.h)(0x6A1C25FC)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x588B8344)
 I (../User_Code/oled.h)(0x6A126ED5)
 I (C:\Keil_v5\ARM\ARMCC\include\stdarg.h)(0x588B8344)
@@ -47,11 +47,11 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (../User_Code/Key.h)(0x6A16AEAB)
-I (../User_Code/test.h)(0x6A16AED2)
-I (../User_Code/Tracing.h)(0x6A16ACF6)
-I (../User_Code/motor.h)(0x6A16EB61)
+I (../User_Code/test.h)(0x6A1C076C)
+I (../User_Code/Tracing.h)(0x6A1851DE)
+I (../User_Code/motor.h)(0x6A1A9AA5)
 I (../User_Code/Serial.h)(0x6A129340)
-I (../User_Code/gy87.h)(0x6A16939B)
+I (../User_Code/gy87.h)(0x6A1C3403)
 F (../Core/Src/gpio.c)(0x6A1554DA)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\gpio.o --omf_browse diansai_yuansai\gpio.crf --depend diansai_yuansai\gpio.d)
 I (../Core/Inc/gpio.h)(0x6A1061CC)
 I (../Core/Inc/main.h)(0x6A1061CD)
@@ -929,10 +929,10 @@ I (../Core/Inc/main.h)(0x6A1061CD)
 I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 F (..\User_Code\oled.h)(0x6A126ED5)()
-F (..\User_Code\headfile.h)(0x6A16EE4A)()
+F (..\User_Code\headfile.h)(0x6A1C25FC)()
 F (..\User_Code\oled_Font.h)(0x6A126CC3)()
-F (..\User_Code\test.c)(0x6A16ACF6)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\test.o --omf_browse diansai_yuansai\test.crf --depend diansai_yuansai\test.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+F (..\User_Code\test.c)(0x6A1C28A5)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\test.o --omf_browse diansai_yuansai\test.crf --depend diansai_yuansai\test.d)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -974,15 +974,15 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
-F (..\User_Code\test.h)(0x6A16AED2)()
-F (..\User_Code\motor.c)(0x6A17ED08)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\motor.o --omf_browse diansai_yuansai\motor.crf --depend diansai_yuansai\motor.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+I (..\User_Code\gy87.h)(0x6A1C3403)
+F (..\User_Code\test.h)(0x6A1C076C)()
+F (..\User_Code\motor.c)(0x6A1C33F0)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\motor.o --omf_browse diansai_yuansai\motor.crf --depend diansai_yuansai\motor.d)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -1024,15 +1024,15 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
-F (..\User_Code\motor.h)(0x6A16EB61)()
+I (..\User_Code\gy87.h)(0x6A1C3403)
+F (..\User_Code\motor.h)(0x6A1A9AA5)()
 F (..\User_Code\Serial.c)(0x6A129340)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\serial.o --omf_browse diansai_yuansai\serial.crf --depend diansai_yuansai\serial.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -1074,15 +1074,15 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
+I (..\User_Code\gy87.h)(0x6A1C3403)
 F (..\User_Code\Serial.h)(0x6A129340)()
-F (..\User_Code\tracing.c)(0x6A17EFD2)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\tracing.o --omf_browse diansai_yuansai\tracing.crf --depend diansai_yuansai\tracing.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+F (..\User_Code\tracing.c)(0x6A1851DB)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\tracing.o --omf_browse diansai_yuansai\tracing.crf --depend diansai_yuansai\tracing.d)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -1124,15 +1124,15 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
-F (..\User_Code\tracing.h)(0x6A16ACF6)()
-F (..\User_Code\gy87.c)(0x6A18277E)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\gy87.o --omf_browse diansai_yuansai\gy87.crf --depend diansai_yuansai\gy87.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+I (..\User_Code\gy87.h)(0x6A1C3403)
+F (..\User_Code\tracing.h)(0x6A1851DE)()
+F (..\User_Code\gy87.c)(0x6A1C2E22)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\gy87.o --omf_browse diansai_yuansai\gy87.crf --depend diansai_yuansai\gy87.d)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -1174,15 +1174,15 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
-F (..\User_Code\gy87.h)(0x6A16939B)()
+I (..\User_Code\gy87.h)(0x6A1C3403)
+F (..\User_Code\gy87.h)(0x6A1C3403)()
 F (..\User_Code\Key.c)(0x6A16ACF6)(--c99 -c --cpu Cortex-M4.fp.sp -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include -I ../User_Code-I.\ARM\CMSIS\5.7.0\CMSIS\Core\Include-I.\RTE\_DianSai_YuanSai-D__UVISION_VERSION="543" -DSTM32F407xx -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F407xx-o diansai_yuansai\key.o --omf_browse diansai_yuansai\key.crf --depend diansai_yuansai\key.d)
-I (..\User_Code\headfile.h)(0x6A16EE4A)
+I (..\User_Code\headfile.h)(0x6A1C25FC)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h)(0x69F15B91)
 I (../Core/Inc/stm32f4xx_hal_conf.h)(0x6A116E41)
 I (../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h)(0x69F15B91)
@@ -1224,10 +1224,10 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x588B8344)
 I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x588B8344)
 I (..\User_Code\Key.h)(0x6A16AEAB)
-I (..\User_Code\test.h)(0x6A16AED2)
-I (..\User_Code\Tracing.h)(0x6A16ACF6)
-I (..\User_Code\motor.h)(0x6A16EB61)
+I (..\User_Code\test.h)(0x6A1C076C)
+I (..\User_Code\Tracing.h)(0x6A1851DE)
+I (..\User_Code\motor.h)(0x6A1A9AA5)
 I (../Core/Inc/tim.h)(0x6A12B9F6)
 I (..\User_Code\Serial.h)(0x6A129340)
-I (..\User_Code\gy87.h)(0x6A16939B)
+I (..\User_Code\gy87.h)(0x6A1C3403)
 F (..\User_Code\Key.h)(0x6A16AEAB)()

@@ -36,9 +36,13 @@
 
 /************************************************/
 
+#ifndef MPU6050_ADDR
 #define MPU6050_ADDR   (0x68 << 1)
+#endif
 
+#ifndef HMC5883_ADDR
 #define HMC5883_ADDR   (0x1E << 1)
+#endif
 
 
 
