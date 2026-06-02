@@ -29,8 +29,9 @@
 
 #define GY87_I2C_TIMEOUT_MS             5U
 #define GY87_UPDATE_PERIOD_S            0.005f
-#define GY87_UPDATE_GUARD_MS            2U
-#define GY87_USE_FIXED_DT               1
+#define GY87_UPDATE_GUARD_MS            5U
+#define GY87_UPDATE_MAX_DT_S            0.30f
+#define GY87_USE_FIXED_DT               0
 #define GY87_ACCEPT_UNKNOWN_MPU_WHO     1
 
 /* ========================= */
@@ -39,15 +40,15 @@
 
 #define GY87_MPU_SMPLRT_DIV             0x04U   /* 1kHz/(4+1)=200Hz */
 #define GY87_MPU_DLPF_CFG               0x03U   /* gyro 44Hz, accel 42Hz */
-#define GY87_MPU_GYRO_CONFIG            0x00U   /* +/-250dps */
+#define GY87_MPU_GYRO_CONFIG            0x10U   /* +/-1000dps */
 #define GY87_MPU_ACCEL_CONFIG           0x00U   /* +/-2g */
 
 #define GY87_ACCEL_SENS                 16384.0f
-#define GY87_GYRO_SENS                  131.0f
+#define GY87_GYRO_SENS                  32.8f
 
 /* Change this sign if yaw increases in the wrong direction. */
 #define GY87_GYRO_Z_SIGN                1.0f
-#define GY87_GYRO_DEADBAND_DPS          0.08f
+#define GY87_GYRO_DEADBAND_DPS          0.20f
 
 /* Keep the car still during calibration. */
 #define GY87_GYRO_CALIB_SAMPLES         500U
@@ -56,7 +57,7 @@
 /* Slow bias learning when the car is nearly still. */
 #define GY87_GYRO_STATIC_LEARN_EN       1
 #define GY87_GYRO_STATIC_DPS            0.55f
-#define GY87_GYRO_BIAS_LEARN_ALPHA      0.00020f
+#define GY87_GYRO_BIAS_LEARN_ALPHA      0.00100f
 #define GY87_STATIC_ACC_TOL_G           0.10f
 
 /* ========================= */
@@ -67,12 +68,13 @@
 #define ANGLE_KD                        0.18f
 #define ANGLE_LOCK_IN                   3.0f
 #define ANGLE_LOCK_OUT                  7.0f
-#define ANGLE_GYRO_LOCK                 35.0f
+#define ANGLE_GYRO_LOCK                 8.0f
 #define ANGLE_CROSS_LOCK_DEG            5.0f
 #define ANGLE_MIN_TURN_SPEED            0.90f
 #define ANGLE_MAX_TURN_SPEED            4.0f
 #define ANGLE_NEAR_MAX_TURN_SPEED       2.2f
 #define ANGLE_SLOW_DOWN_DEG             18.0f
+#define ANGLE_DAMP_LIMIT                0.65f
 #define ANGLE_SPEED_RAMP                0.20f
 #define ANGLE_OUTPUT_SIGN               1.0f
 

@@ -19,6 +19,7 @@ static float AngleLastTarget = 0.0f;
 static float AngleLastError = 0.0f;
 static float AngleLastTurnSpeed = 0.0f;
 static float TurnTaskTarget = 0.0f;
+static volatile uint8_t Gy87_UpdateBusy = 0;
 
 static float Gy87_Abs(float Value)
 {
@@ -371,6 +372,7 @@ void GY87_Init(void)
 {
     memset(&GY87, 0, sizeof(GY87));
 
+    Gy87_UpdateBusy = 0;
     FusionReady = 0;
     AngleLocked = 0;
     AngleTargetValid = 0;
@@ -397,11 +399,18 @@ uint8_t GY87_Update(void)
     uint32_t ElapsedMs;
     float Dt;
 
+    if(Gy87_UpdateBusy)
+    {
+        return 0;
+    }
+
+    Gy87_UpdateBusy = 1;
     NowMs = HAL_GetTick();
 
     if((GY87.Status & GY87_STATUS_MPU_OK) == 0U &&
        GY87.UpdateCount == 0U)
     {
+        Gy87_UpdateBusy = 0;
         return 0;
     }
 
@@ -411,6 +420,7 @@ uint8_t GY87_Update(void)
 
         if(ElapsedMs < GY87_UPDATE_GUARD_MS)
         {
+            Gy87_UpdateBusy = 0;
             return 0;
         }
     }
@@ -425,12 +435,13 @@ uint8_t GY87_Update(void)
     else
     {
         Dt = (float)(NowMs - GY87.LastUpdateMs) * 0.001f;
-        Dt = Gy87_Clamp(Dt, 0.001f, 0.05f);
+        Dt = Gy87_Clamp(Dt, 0.001f, GY87_UPDATE_MAX_DT_S);
     }
 #endif
 
     if(!MPU6050_ReadRaw())
     {
+        Gy87_UpdateBusy = 0;
         return 0;
     }
 
@@ -452,6 +463,7 @@ uint8_t GY87_Update(void)
     GY87.LastUpdateMs = NowMs;
     GY87.UpdateCount++;
 
+    Gy87_UpdateBusy = 0;
     return 1;
 }
 
@@ -483,7 +495,8 @@ uint8_t GY87_ResetYawToMag(void)
 
 uint8_t GY87_IsReady(void)
 {
-    if((GY87.Status & GY87_STATUS_MPU_OK) == 0U)
+    if((GY87.Status & GY87_STATUS_MPU_OK) == 0U ||
+       GY87.UpdateCount == 0U)
     {
         return 0;
     }
@@ -519,10 +532,10 @@ float Angle_CalcHoldSpeed(float TargetYaw)
     float Error;
     float AbsError;
     float TurnSpeed;
+    float BaseSpeed;
+    float DampSpeed;
     float TargetNorm;
     float MaxTurnSpeed;
-
-    (void)GY87_GetYaw();
 
     TargetNorm = Angle_Normalize(TargetYaw);
 
@@ -581,8 +594,23 @@ float Angle_CalcHoldSpeed(float TargetYaw)
         return 0.0f;
     }
 
-    TurnSpeed =
-        (Error * ANGLE_KP - GY87.YawRate_DPS * ANGLE_KD) * ANGLE_OUTPUT_SIGN;
+    BaseSpeed = Error * ANGLE_KP;
+    DampSpeed = GY87.YawRate_DPS * ANGLE_KD;
+    DampSpeed = Gy87_Clamp(DampSpeed,
+                           -ANGLE_DAMP_LIMIT,
+                           ANGLE_DAMP_LIMIT);
+
+    TurnSpeed = (BaseSpeed - DampSpeed) * ANGLE_OUTPUT_SIGN;
+
+    if(BaseSpeed > 0.0f && TurnSpeed < 0.0f)
+    {
+        TurnSpeed = 0.001f;
+    }
+
+    if(BaseSpeed < 0.0f && TurnSpeed > 0.0f)
+    {
+        TurnSpeed = -0.001f;
+    }
 
     if(AbsError > ANGLE_LOCK_OUT)
     {
@@ -651,8 +679,6 @@ void Angle_DriveStraight(float TargetYaw, float BaseSpeed)
     float AbsError;
     float Correction;
 
-    (void)GY87_GetYaw();
-
     if((GY87.Status & GY87_STATUS_MPU_OK) == 0U)
     {
         Motor_SetSpeed(0.0f, 0.0f);
@@ -681,8 +707,6 @@ void Angle_DriveStraight(float TargetYaw, float BaseSpeed)
 
 void Angle_StartTurn(float DeltaYaw)
 {
-    (void)GY87_GetYaw();
-
     TurnTaskTarget = Angle_TargetAdd(GY87.Yaw, DeltaYaw);
     TurnTaskActive = 1;
     Angle_ResetController();

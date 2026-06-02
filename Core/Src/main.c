@@ -131,6 +131,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  (void)GY87_Update();
+
 	  if(Debug_Print_Flag)
 	  {
 		  Debug_Print_Flag = 0;
@@ -206,7 +208,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  Motor_Pid();
 	test_cnt++;
 
-	if(test_cnt == 20)
+	if(test_cnt == 100)
 	{
 		Debug_Print_Flag = 1;
 		test_cnt = 0;
