@@ -3,6 +3,7 @@
 GY87_t GY87;
 
 static uint8_t MPU_Buffer[14];
+static uint8_t HMC_Buffer[6];
 static uint16_t MPU6050_ActiveAddr = MPU6050_ADDR;
 
 static float GyroX_Offset = 0.0f;
@@ -19,6 +20,7 @@ static float AngleLastTarget = 0.0f;
 static float AngleLastError = 0.0f;
 static float AngleLastTurnSpeed = 0.0f;
 static float TurnTaskTarget = 0.0f;
+static uint32_t MagLastUpdateMs = 0;
 static volatile uint8_t Gy87_UpdateBusy = 0;
 
 static float Gy87_Abs(float Value)
@@ -294,6 +296,139 @@ void MPU6050_Read(void)
     }
 }
 
+static uint8_t HMC5883_ApplyScale(void)
+{
+    GY87.MagX_f =
+        (((float)GY87.MagX - GY87_MAG_X_OFFSET) *
+         GY87_MAG_X_SCALE) * GY87_MAG_X_SIGN;
+
+    GY87.MagY_f =
+        (((float)GY87.MagY - GY87_MAG_Y_OFFSET) *
+         GY87_MAG_Y_SCALE) * GY87_MAG_Y_SIGN;
+
+    GY87.MagZ_f =
+        (((float)GY87.MagZ - GY87_MAG_Z_OFFSET) *
+         GY87_MAG_Z_SCALE) * GY87_MAG_Z_SIGN;
+
+    GY87.MagNorm =
+        sqrtf(GY87.MagX_f * GY87.MagX_f +
+              GY87.MagY_f * GY87.MagY_f +
+              GY87.MagZ_f * GY87.MagZ_f);
+
+    if(GY87.MagNorm < GY87_MAG_MIN_NORM ||
+       GY87.MagNorm > GY87_MAG_MAX_NORM)
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 1);
+        return 0;
+    }
+
+    GY87.MagYaw =
+        atan2f(GY87.MagY_f, GY87.MagX_f) * 57.2957795f;
+
+    GY87.MagYaw =
+        Angle_Normalize(GY87.MagYaw * GY87_MAG_YAW_SIGN +
+                        GY87_MAG_YAW_OFFSET_DEG +
+                        GY87_MAG_DECLINATION_DEG);
+
+    Gy87_SetStatus(GY87_STATUS_MAG_VALID, 1);
+    Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 0);
+    return 1;
+}
+
+static uint8_t HMC5883_ReadRaw(void)
+{
+    uint8_t Status = 0;
+
+    if((GY87.Status & GY87_STATUS_MAG_OK) == 0U)
+    {
+        return 0;
+    }
+
+    if(Gy87_MemRead(HMC5883_ADDR, 0x09U, &Status, 1U) != HAL_OK)
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_OK, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        return 0;
+    }
+
+    if((Status & 0x01U) == 0U)
+    {
+        return 0;
+    }
+
+    if((Status & 0x02U) != 0U)
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 1);
+        return 0;
+    }
+
+    if(Gy87_MemRead(HMC5883_ADDR, 0x03U, HMC_Buffer, 6U) != HAL_OK)
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_OK, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        return 0;
+    }
+
+    GY87.MagX = Gy87_MakeInt16(HMC_Buffer[0], HMC_Buffer[1]);
+    GY87.MagZ = Gy87_MakeInt16(HMC_Buffer[2], HMC_Buffer[3]);
+    GY87.MagY = Gy87_MakeInt16(HMC_Buffer[4], HMC_Buffer[5]);
+    GY87.MagUpdateCount++;
+
+    return HMC5883_ApplyScale();
+}
+
+static uint8_t HMC5883_Init(void)
+{
+    uint8_t IdA = 0;
+
+    if(!Gy87_DeviceReady(HMC5883_ADDR))
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_OK, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        return 0;
+    }
+
+    GY87_WriteReg(HMC5883_ADDR, 0x00U, 0x78U);
+    GY87_WriteReg(HMC5883_ADDR, 0x01U, 0x20U);
+    GY87_WriteReg(HMC5883_ADDR, 0x02U, 0x00U);
+    HAL_Delay(10);
+
+    if(Gy87_MemRead(HMC5883_ADDR, 0x0AU, &IdA, 1U) != HAL_OK)
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_OK, 0);
+        Gy87_SetStatus(GY87_STATUS_MAG_VALID, 0);
+        return 0;
+    }
+
+    if(IdA != 'H')
+    {
+        Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 1);
+    }
+
+    Gy87_SetStatus(GY87_STATUS_MAG_OK, 1);
+    return 1;
+}
+
+static uint8_t GY87_SetStartupYawToMag(void)
+{
+    uint8_t i;
+
+    for(i = 0; i < GY87_MAG_STARTUP_SAMPLES; i++)
+    {
+        if(HMC5883_ReadRaw())
+        {
+            GY87_SetYaw(GY87.MagYaw);
+            return 1;
+        }
+
+        HAL_Delay(GY87_MAG_STARTUP_DELAY_MS);
+    }
+
+    return 0;
+}
+
 static uint8_t GY87_MPU_Init(void)
 {
     uint8_t Who = 0;
@@ -309,6 +444,8 @@ static uint8_t GY87_MPU_Init(void)
     GY87_WriteReg(MPU6050_ActiveAddr, 0x1AU, GY87_MPU_DLPF_CFG);
     GY87_WriteReg(MPU6050_ActiveAddr, 0x1BU, GY87_MPU_GYRO_CONFIG);
     GY87_WriteReg(MPU6050_ActiveAddr, 0x1CU, GY87_MPU_ACCEL_CONFIG);
+    GY87_WriteReg(MPU6050_ActiveAddr, 0x6AU, 0x00U);
+    GY87_WriteReg(MPU6050_ActiveAddr, 0x37U, 0x02U);
 
     HAL_Delay(20);
 
@@ -379,6 +516,7 @@ void GY87_Init(void)
     AngleLastErrorValid = 0;
     TurnTaskActive = 0;
     AngleLastTurnSpeed = 0.0f;
+    MagLastUpdateMs = 0;
     MPU6050_ActiveAddr = MPU6050_ADDR;
     GY87.MpuAddr = (uint8_t)(MPU6050_ADDR >> 1);
 
@@ -388,8 +526,14 @@ void GY87_Init(void)
         return;
     }
 
+    (void)HMC5883_Init();
     GY87_GyroCalibrate();
-    GY87_SetYaw(0.0f);
+
+    if(!GY87_SetStartupYawToMag())
+    {
+        GY87_SetYaw(0.0f);
+    }
+
     GY87.LastUpdateMs = HAL_GetTick();
 }
 
@@ -398,6 +542,8 @@ uint8_t GY87_Update(void)
     uint32_t NowMs;
     uint32_t ElapsedMs;
     float Dt;
+    float GyroYaw;
+    float MagError;
 
     if(Gy87_UpdateBusy)
     {
@@ -447,7 +593,22 @@ uint8_t GY87_Update(void)
 
     MPU6050_ApplyScale();
 
-    GY87.Yaw = Angle_Normalize(GY87.Yaw + GY87.YawRate_DPS * Dt);
+    GyroYaw = Angle_Normalize(GY87.Yaw + GY87.YawRate_DPS * Dt);
+    GY87.Yaw = GyroYaw;
+
+    if((GY87.Status & GY87_STATUS_MAG_OK) != 0U &&
+       (NowMs - MagLastUpdateMs) >= GY87_MAG_UPDATE_PERIOD_MS)
+    {
+        MagLastUpdateMs = NowMs;
+
+        if(HMC5883_ReadRaw())
+        {
+            MagError = Angle_Error(GY87.MagYaw, GyroYaw);
+            GY87.Yaw =
+                Angle_Normalize(GyroYaw +
+                                MagError * GY87_MAG_FUSION_ALPHA);
+        }
+    }
 
 #if GY87_GYRO_STATIC_LEARN_EN
     if(Gy87_Abs(GY87.YawRate_DPS) < GY87_GYRO_STATIC_DPS &&
@@ -488,9 +649,13 @@ void GY87_SetYaw(float Yaw)
 
 uint8_t GY87_ResetYawToMag(void)
 {
-    GY87_SetYaw(0.0f);
-    GY87.MagYaw = GY87.Yaw;
-    return 1;
+    if(HMC5883_ReadRaw())
+    {
+        GY87_SetYaw(GY87.MagYaw);
+        return 1;
+    }
+
+    return 0;
 }
 
 uint8_t GY87_IsReady(void)
@@ -506,11 +671,12 @@ uint8_t GY87_IsReady(void)
 
 void HMC5883_Read(void)
 {
+    (void)HMC5883_ReadRaw();
 }
 
 float HMC5883_GetYaw(void)
 {
-    GY87.MagYaw = GY87.Yaw;
+    (void)HMC5883_ReadRaw();
     return GY87.MagYaw;
 }
 
@@ -534,8 +700,10 @@ float Angle_CalcHoldSpeed(float TargetYaw)
     float TurnSpeed;
     float BaseSpeed;
     float DampSpeed;
+    float ControlSpeed;
     float TargetNorm;
     float MaxTurnSpeed;
+    float RampLimit;
 
     TargetNorm = Angle_Normalize(TargetYaw);
 
@@ -586,8 +754,7 @@ float Angle_CalcHoldSpeed(float TargetYaw)
         }
     }
 
-    if(AbsError < ANGLE_LOCK_IN &&
-       Gy87_Abs(GY87.YawRate_DPS) < ANGLE_GYRO_LOCK)
+    if(AbsError < ANGLE_LOCK_IN)
     {
         AngleLocked = 1;
         AngleLastTurnSpeed = 0.0f;
@@ -600,17 +767,19 @@ float Angle_CalcHoldSpeed(float TargetYaw)
                            -ANGLE_DAMP_LIMIT,
                            ANGLE_DAMP_LIMIT);
 
-    TurnSpeed = (BaseSpeed - DampSpeed) * ANGLE_OUTPUT_SIGN;
+    ControlSpeed = BaseSpeed - DampSpeed;
 
-    if(BaseSpeed > 0.0f && TurnSpeed < 0.0f)
+    if(BaseSpeed > 0.0f && ControlSpeed < 0.0f)
     {
-        TurnSpeed = 0.001f;
+        ControlSpeed = 0.0f;
     }
 
-    if(BaseSpeed < 0.0f && TurnSpeed > 0.0f)
+    if(BaseSpeed < 0.0f && ControlSpeed > 0.0f)
     {
-        TurnSpeed = -0.001f;
+        ControlSpeed = 0.0f;
     }
+
+    TurnSpeed = ControlSpeed * ANGLE_OUTPUT_SIGN;
 
     if(AbsError > ANGLE_LOCK_OUT)
     {
@@ -643,14 +812,22 @@ float Angle_CalcHoldSpeed(float TargetYaw)
                            -MaxTurnSpeed,
                            MaxTurnSpeed);
 
-    if(TurnSpeed - AngleLastTurnSpeed > ANGLE_SPEED_RAMP)
+    RampLimit = ANGLE_SPEED_RAMP;
+
+    if((AngleLastTurnSpeed > 0.0f && TurnSpeed < AngleLastTurnSpeed) ||
+       (AngleLastTurnSpeed < 0.0f && TurnSpeed > AngleLastTurnSpeed))
     {
-        TurnSpeed = AngleLastTurnSpeed + ANGLE_SPEED_RAMP;
+        RampLimit = ANGLE_SPEED_BRAKE_RAMP;
     }
 
-    if(TurnSpeed - AngleLastTurnSpeed < -ANGLE_SPEED_RAMP)
+    if(TurnSpeed - AngleLastTurnSpeed > RampLimit)
     {
-        TurnSpeed = AngleLastTurnSpeed - ANGLE_SPEED_RAMP;
+        TurnSpeed = AngleLastTurnSpeed + RampLimit;
+    }
+
+    if(TurnSpeed - AngleLastTurnSpeed < -RampLimit)
+    {
+        TurnSpeed = AngleLastTurnSpeed - RampLimit;
     }
 
     AngleLastTurnSpeed = TurnSpeed;
@@ -746,14 +923,18 @@ void Angle_StopTurnTask(void)
 
 void GY87_Test(void)
 {
-    Serial_Printf("Yaw:%f GZ:%f Roll:%f Pitch:%f\r\n",
+    Serial_Printf("Yaw:%f Mag:%f GZ:%f Roll:%f Pitch:%f\r\n",
                   (double)GY87.Yaw,
+                  (double)GY87.MagYaw,
                   (double)GY87.GyroZ_DPS,
                   (double)GY87.Roll,
                   (double)GY87.Pitch);
 
-    Serial_Printf("RawGZ:%d ST:%04X ADR:%02X WHO:%02X I2C:%u EC:%08lX ERR:%lu\r\n",
+    Serial_Printf("RawGZ:%d MX:%d MY:%d MZ:%d ST:%04X ADR:%02X WHO:%02X I2C:%u EC:%08lX ERR:%lu\r\n",
                   GY87.GyroZ,
+                  GY87.MagX,
+                  GY87.MagY,
+                  GY87.MagZ,
                   (unsigned int)GY87.Status,
                   (unsigned int)GY87.MpuAddr,
                   (unsigned int)GY87.MpuWhoAmI,

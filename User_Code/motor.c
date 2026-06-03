@@ -44,7 +44,7 @@
 #define TARGET_ZERO_EPS        0.05f
 
 /* 目标速度大于该值才启用PWM死区补偿 */
-#define TARGET_DEADZONE_ENABLE 0.25f
+#define TARGET_DEADZONE_ENABLE 0.85f
 
 /* 目标为0且实际速度足够小时直接关输出 */
 #define SPEED_STOP_EPS         0.8f
@@ -95,6 +95,23 @@ static int16_t Last_PWM_B = 0;
 
 static uint16_t Block_Cnt_A = 0;
 static uint16_t Block_Cnt_B = 0;
+
+static void Motor_LimitOutputToTargetDirection(PID *Motor)
+{
+    if(Motor->Target > TARGET_ZERO_EPS &&
+       Motor->Out < 0.0f)
+    {
+        Motor->Out = 0.0f;
+        Motor->ErrorInt = 0.0f;
+    }
+
+    if(Motor->Target < -TARGET_ZERO_EPS &&
+       Motor->Out > 0.0f)
+    {
+        Motor->Out = 0.0f;
+        Motor->ErrorInt = 0.0f;
+    }
+}
 
 
 /**************************************************
@@ -424,6 +441,13 @@ void Motor_Pid(void)
     if(MotorB.Out - Last_PWM_B < -PWM_RAMP_LIMIT)
         MotorB.Out =
             Last_PWM_B - PWM_RAMP_LIMIT;
+
+
+    /************** 非零目标方向保护 **************/
+
+    Motor_LimitOutputToTargetDirection(&MotorA);
+
+    Motor_LimitOutputToTargetDirection(&MotorB);
 
 
     /************** PWM死区补偿 **************/

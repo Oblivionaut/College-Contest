@@ -4,12 +4,11 @@
 #include "headfile.h"
 
 /*
- * Temporary MPU6050-only yaw driver.
+ * GY87 yaw driver.
  *
- * It keeps the old GY87/Angle API so the rest of the car code can stay
- * unchanged while the GY87 module is replaced. Yaw is startup-relative:
- * the heading at power-on is 0 deg. Without a magnetometer there is no
- * true earth-absolute heading, only low-drift gyro integration.
+ * Yaw is fused from MPU6050 gyro integration and HMC5883L magnetometer
+ * heading. The magnetometer gives startup-absolute heading; the gyro keeps
+ * short-term response smooth between magnetometer samples.
  */
 
 /* ========================= */
@@ -26,6 +25,10 @@
 #define MPU6050_ADDR                    (0x68 << 1)
 #endif
 #define MPU6050_ADDR_ALT                (0x69 << 1)
+
+#ifndef HMC5883_ADDR
+#define HMC5883_ADDR                    (0x1E << 1)
+#endif
 
 #define GY87_I2C_TIMEOUT_MS             5U
 #define GY87_UPDATE_PERIOD_S            0.005f
@@ -61,13 +64,40 @@
 #define GY87_STATIC_ACC_TOL_G           0.10f
 
 /* ========================= */
+/* HMC5883L magnetometer      */
+/* ========================= */
+
+#define GY87_MAG_UPDATE_PERIOD_MS       15U
+#define GY87_MAG_STARTUP_SAMPLES        8U
+#define GY87_MAG_STARTUP_DELAY_MS       20U
+#define GY87_MAG_FUSION_ALPHA           0.90f
+
+#define GY87_MAG_X_SIGN                 1.0f
+#define GY87_MAG_Y_SIGN                 1.0f
+#define GY87_MAG_Z_SIGN                 1.0f
+
+#define GY87_MAG_X_OFFSET               0.0f
+#define GY87_MAG_Y_OFFSET               0.0f
+#define GY87_MAG_Z_OFFSET               0.0f
+
+#define GY87_MAG_X_SCALE                1.0f
+#define GY87_MAG_Y_SCALE                1.0f
+#define GY87_MAG_Z_SCALE                1.0f
+
+#define GY87_MAG_MIN_NORM               50.0f
+#define GY87_MAG_MAX_NORM               5000.0f
+#define GY87_MAG_YAW_SIGN               1.0f
+#define GY87_MAG_YAW_OFFSET_DEG         0.0f
+#define GY87_MAG_DECLINATION_DEG        0.0f
+
+/* ========================= */
 /* Angle controller           */
 /* ========================= */
 
 #define ANGLE_KP                        0.055f
 #define ANGLE_KD                        0.18f
-#define ANGLE_LOCK_IN                   3.0f
-#define ANGLE_LOCK_OUT                  7.0f
+#define ANGLE_LOCK_IN                   5.0f
+#define ANGLE_LOCK_OUT                  9.0f
 #define ANGLE_GYRO_LOCK                 8.0f
 #define ANGLE_CROSS_LOCK_DEG            5.0f
 #define ANGLE_MIN_TURN_SPEED            0.90f
@@ -76,7 +106,8 @@
 #define ANGLE_SLOW_DOWN_DEG             18.0f
 #define ANGLE_DAMP_LIMIT                0.65f
 #define ANGLE_SPEED_RAMP                0.20f
-#define ANGLE_OUTPUT_SIGN               1.0f
+#define ANGLE_SPEED_BRAKE_RAMP          0.60f
+#define ANGLE_OUTPUT_SIGN               -1.0f
 
 #define ANGLE_STRAIGHT_KP               0.16f
 #define ANGLE_STRAIGHT_KD               0.06f
