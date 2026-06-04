@@ -1,4 +1,5 @@
 #include "headfile.h"
+#include "KalmanYaw.h"
 
 GY87_t GY87;
 
@@ -13,11 +14,10 @@ static float GyroZ_Offset = 0.0f;
 static uint8_t FusionReady = 0;
 static uint8_t AngleLocked = 0;
 static uint8_t AngleTargetValid = 0;
-static uint8_t AngleLastErrorValid = 0;
+static uint8_t AngleStableCount = 0;
 static uint8_t TurnTaskActive = 0;
 
 static float AngleLastTarget = 0.0f;
-static float AngleLastError = 0.0f;
 static float AngleLastTurnSpeed = 0.0f;
 static float TurnTaskTarget = 0.0f;
 static uint32_t MagLastUpdateMs = 0;
@@ -270,12 +270,16 @@ static void MPU6050_ApplyScale(void)
 
     GY87.GyroX_DPS = ((float)GY87.GyroX / GY87_GYRO_SENS) - GyroX_Offset;
     GY87.GyroY_DPS = ((float)GY87.GyroY / GY87_GYRO_SENS) - GyroY_Offset;
-    GY87.GyroZ_DPS = ((float)GY87.GyroZ / GY87_GYRO_SENS) - GyroZ_Offset;
+    GY87.GyroZ_Raw_DPS = (float)GY87.GyroZ / GY87_GYRO_SENS;
+    GY87.GyroZ_Offset_DPS = GyroZ_Offset;
+    GY87.GyroZ_DPS = GY87.GyroZ_Raw_DPS - GY87.GyroZ_Offset_DPS;
 
+#if GY87_GYRO_DEADBAND_ENABLE
     if(Gy87_Abs(GY87.GyroZ_DPS) < GY87_GYRO_DEADBAND_DPS)
     {
         GY87.GyroZ_DPS = 0.0f;
     }
+#endif
 
     GY87.YawRate_DPS = GY87.GyroZ_DPS * GY87_GYRO_Z_SIGN;
 
@@ -298,6 +302,11 @@ void MPU6050_Read(void)
 
 static uint8_t HMC5883_ApplyScale(void)
 {
+    float RollRad;
+    float PitchRad;
+    float MagXh;
+    float MagYh;
+
     GY87.MagX_f =
         (((float)GY87.MagX - GY87_MAG_X_OFFSET) *
          GY87_MAG_X_SCALE) * GY87_MAG_X_SIGN;
@@ -323,8 +332,20 @@ static uint8_t HMC5883_ApplyScale(void)
         return 0;
     }
 
+    RollRad = GY87.Roll * 0.0174532925f;
+    PitchRad = GY87.Pitch * 0.0174532925f;
+
+    MagXh =
+        GY87.MagX_f * cosf(PitchRad) +
+        GY87.MagZ_f * sinf(PitchRad);
+
+    MagYh =
+        GY87.MagX_f * sinf(RollRad) * sinf(PitchRad) +
+        GY87.MagY_f * cosf(RollRad) -
+        GY87.MagZ_f * sinf(RollRad) * cosf(PitchRad);
+
     GY87.MagYaw =
-        atan2f(GY87.MagY_f, GY87.MagX_f) * 57.2957795f;
+        atan2f(MagYh, MagXh) * 57.2957795f;
 
     GY87.MagYaw =
         Angle_Normalize(GY87.MagYaw * GY87_MAG_YAW_SIGN +
@@ -411,6 +432,7 @@ static uint8_t HMC5883_Init(void)
     return 1;
 }
 
+#if GY87_USE_MAG_STARTUP_YAW
 static uint8_t GY87_SetStartupYawToMag(void)
 {
     uint8_t i;
@@ -428,6 +450,7 @@ static uint8_t GY87_SetStartupYawToMag(void)
 
     return 0;
 }
+#endif
 
 static uint8_t GY87_MPU_Init(void)
 {
@@ -513,7 +536,7 @@ void GY87_Init(void)
     FusionReady = 0;
     AngleLocked = 0;
     AngleTargetValid = 0;
-    AngleLastErrorValid = 0;
+    AngleStableCount = 0;
     TurnTaskActive = 0;
     AngleLastTurnSpeed = 0.0f;
     MagLastUpdateMs = 0;
@@ -529,10 +552,18 @@ void GY87_Init(void)
     (void)HMC5883_Init();
     GY87_GyroCalibrate();
 
+#if GY87_USE_MAG_STARTUP_YAW
     if(!GY87_SetStartupYawToMag())
     {
-        GY87_SetYaw(0.0f);
+        GY87_SetYaw(GY87_STARTUP_YAW_DEG);
     }
+#else
+    GY87_SetYaw(GY87_STARTUP_YAW_DEG);
+#endif
+
+#if GY87_USE_KALMAN_YAW
+    KalmanYaw_SetAngle(GY87.Yaw);
+#endif
 
     GY87.LastUpdateMs = HAL_GetTick();
 }
@@ -541,9 +572,19 @@ uint8_t GY87_Update(void)
 {
     uint32_t NowMs;
     uint32_t ElapsedMs;
+#if GY87_MAG_FUSION_ENABLE && !GY87_USE_KALMAN_YAW
+    uint32_t MagElapsedMs;
+#endif
     float Dt;
+#if GY87_MAG_FUSION_ENABLE && !GY87_USE_KALMAN_YAW
+    float MagDt;
+#endif
     float GyroYaw;
+#if GY87_MAG_FUSION_ENABLE && !GY87_USE_KALMAN_YAW
     float MagError;
+    float MagStep;
+    float MagMaxStep;
+#endif
 
     if(Gy87_UpdateBusy)
     {
@@ -593,30 +634,58 @@ uint8_t GY87_Update(void)
 
     MPU6050_ApplyScale();
 
+#if GY87_USE_KALMAN_YAW
+    GyroYaw = KalmanYaw_Predict(GY87.YawRate_DPS, Dt);
+#else
     GyroYaw = Angle_Normalize(GY87.Yaw + GY87.YawRate_DPS * Dt);
+#endif
     GY87.Yaw = GyroYaw;
 
     if((GY87.Status & GY87_STATUS_MAG_OK) != 0U &&
        (NowMs - MagLastUpdateMs) >= GY87_MAG_UPDATE_PERIOD_MS)
     {
+#if GY87_MAG_FUSION_ENABLE && !GY87_USE_KALMAN_YAW
+        MagElapsedMs = NowMs - MagLastUpdateMs;
+#endif
         MagLastUpdateMs = NowMs;
 
         if(HMC5883_ReadRaw())
         {
-            MagError = Angle_Error(GY87.MagYaw, GyroYaw);
-            GY87.Yaw =
-                Angle_Normalize(GyroYaw +
-                                MagError * GY87_MAG_FUSION_ALPHA);
+#if GY87_USE_KALMAN_YAW
+            if(Gy87_Abs(GY87.AccNorm_g - 1.0f) <= GY87_MAG_FUSION_ACC_TOL_G)
+            {
+                GY87.Yaw = KalmanYaw_Correct(GY87.MagYaw);
+                Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 0);
+            }
+            else
+            {
+                Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 1);
+            }
+#elif GY87_MAG_FUSION_ENABLE
+            MagError = Angle_Error(GY87.MagYaw, GY87.Yaw);
+
+            if(Gy87_Abs(MagError) <= GY87_MAG_FUSION_MAX_ERROR_DEG &&
+               Gy87_Abs(GY87.AccNorm_g - 1.0f) <= GY87_MAG_FUSION_ACC_TOL_G)
+            {
+                MagDt = (float)MagElapsedMs * 0.001f;
+                MagDt = Gy87_Clamp(MagDt,
+                                   (float)GY87_MAG_UPDATE_PERIOD_MS * 0.001f,
+                                   GY87_UPDATE_MAX_DT_S);
+
+                MagMaxStep = GY87_MAG_FUSION_MAX_RATE_DPS * MagDt;
+                MagStep = MagError * GY87_MAG_FUSION_GAIN * MagDt;
+                MagStep = Gy87_Clamp(MagStep, -MagMaxStep, MagMaxStep);
+
+                GY87.Yaw = Angle_Normalize(GY87.Yaw + MagStep);
+                Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 0);
+            }
+            else
+            {
+                Gy87_SetStatus(GY87_STATUS_MAG_REJECTED, 1);
+            }
+#endif
         }
     }
-
-#if GY87_GYRO_STATIC_LEARN_EN
-    if(Gy87_Abs(GY87.YawRate_DPS) < GY87_GYRO_STATIC_DPS &&
-       Gy87_Abs(GY87.AccNorm_g - 1.0f) < GY87_STATIC_ACC_TOL_G)
-    {
-        GyroZ_Offset += GY87.GyroZ_DPS * GY87_GYRO_BIAS_LEARN_ALPHA;
-    }
-#endif
 
     FusionReady = 1;
     Gy87_SetStatus(GY87_STATUS_FUSION_READY, 1);
@@ -642,6 +711,11 @@ float GY87_GetYawFast(void)
 void GY87_SetYaw(float Yaw)
 {
     GY87.Yaw = Angle_Normalize(Yaw);
+
+#if GY87_USE_KALMAN_YAW
+    KalmanYaw_SetAngle(GY87.Yaw);
+#endif
+
     FusionReady = 1;
     Gy87_SetStatus(GY87_STATUS_FUSION_READY, 1);
     GY87.LastUpdateMs = HAL_GetTick();
@@ -684,7 +758,7 @@ void Angle_ResetController(void)
 {
     AngleLocked = 0;
     AngleTargetValid = 0;
-    AngleLastErrorValid = 0;
+    AngleStableCount = 0;
     AngleLastTurnSpeed = 0.0f;
 }
 
@@ -697,19 +771,21 @@ float Angle_CalcHoldSpeed(float TargetYaw)
 {
     float Error;
     float AbsError;
+    float AbsYawRate;
     float TurnSpeed;
-    float BaseSpeed;
-    float DampSpeed;
-    float ControlSpeed;
     float TargetNorm;
     float MaxTurnSpeed;
     float RampLimit;
+    float AbsTurnSpeed;
+    float BrakeDistance;
+    float MovingToTarget;
 
     TargetNorm = Angle_Normalize(TargetYaw);
 
     if((GY87.Status & GY87_STATUS_MPU_OK) == 0U)
     {
         AngleLocked = 1;
+        AngleStableCount = 0;
         AngleLastTurnSpeed = 0.0f;
         return 0.0f;
     }
@@ -718,104 +794,117 @@ float Angle_CalcHoldSpeed(float TargetYaw)
        Gy87_Abs(Angle_Error(TargetNorm, AngleLastTarget)) > 0.05f)
     {
         AngleLocked = 0;
+        AngleStableCount = 0;
         AngleLastTurnSpeed = 0.0f;
         AngleLastTarget = TargetNorm;
         AngleTargetValid = 1;
-        AngleLastErrorValid = 0;
     }
 
     Error = Angle_Error(TargetNorm, GY87.Yaw);
     AbsError = Gy87_Abs(Error);
-
-    if(AngleLastErrorValid &&
-       ((Error > 0.0f && AngleLastError < 0.0f) ||
-        (Error < 0.0f && AngleLastError > 0.0f)) &&
-       AbsError < ANGLE_CROSS_LOCK_DEG)
-    {
-        AngleLocked = 1;
-        AngleLastError = Error;
-        AngleLastTurnSpeed = 0.0f;
-        return 0.0f;
-    }
-
-    AngleLastError = Error;
-    AngleLastErrorValid = 1;
+    AbsYawRate = Gy87_Abs(GY87.YawRate_DPS);
 
     if(AngleLocked)
     {
-        if(AbsError > ANGLE_LOCK_OUT)
+        if(AbsError <= ANGLE_LOCK_OUT)
         {
-            AngleLocked = 0;
-        }
-        else
-        {
+            AngleStableCount = ANGLE_LOCK_CONFIRM_TICKS;
             AngleLastTurnSpeed = 0.0f;
             return 0.0f;
         }
+        else
+        {
+            AngleLocked = 0;
+            AngleStableCount = 0;
+        }
     }
 
-    if(AbsError < ANGLE_LOCK_IN)
+    if(AbsError <= ANGLE_LOCK_IN)
     {
-        AngleLocked = 1;
+        AngleLastTurnSpeed = 0.0f;
+
+        if(AbsYawRate <= ANGLE_GYRO_LOCK)
+        {
+            if(AngleStableCount < ANGLE_LOCK_CONFIRM_TICKS)
+            {
+                AngleStableCount++;
+            }
+
+            if(AngleStableCount >= ANGLE_LOCK_CONFIRM_TICKS)
+            {
+                AngleLocked = 1;
+            }
+        }
+        else
+        {
+            AngleStableCount = 0;
+        }
+
+        return 0.0f;
+    }
+
+    AngleStableCount = 0;
+    MovingToTarget = Error * GY87.YawRate_DPS;
+    BrakeDistance =
+        AbsYawRate * ANGLE_BRAKE_PREDICT_S +
+        ANGLE_BRAKE_MARGIN_DEG;
+
+    if(MovingToTarget > 0.0f &&
+       AbsYawRate > ANGLE_BRAKE_GYRO_DPS &&
+       AbsError < ANGLE_BRAKE_START_DEG &&
+       AbsError < BrakeDistance)
+    {
         AngleLastTurnSpeed = 0.0f;
         return 0.0f;
     }
 
-    BaseSpeed = Error * ANGLE_KP;
-    DampSpeed = GY87.YawRate_DPS * ANGLE_KD;
-    DampSpeed = Gy87_Clamp(DampSpeed,
-                           -ANGLE_DAMP_LIMIT,
-                           ANGLE_DAMP_LIMIT);
+    TurnSpeed =
+        (Error * ANGLE_KP -
+         GY87.YawRate_DPS * ANGLE_KD) * ANGLE_OUTPUT_SIGN;
 
-    ControlSpeed = BaseSpeed - DampSpeed;
-
-    if(BaseSpeed > 0.0f && ControlSpeed < 0.0f)
+    if(AbsError < ANGLE_LOCK_OUT &&
+       AbsYawRate > ANGLE_GYRO_LOCK)
     {
-        ControlSpeed = 0.0f;
+        TurnSpeed = 0.0f;
     }
-
-    if(BaseSpeed < 0.0f && ControlSpeed > 0.0f)
-    {
-        ControlSpeed = 0.0f;
-    }
-
-    TurnSpeed = ControlSpeed * ANGLE_OUTPUT_SIGN;
-
-    if(AbsError > ANGLE_LOCK_OUT)
-    {
-        if(TurnSpeed > 0.0f && TurnSpeed < ANGLE_MIN_TURN_SPEED)
-        {
-            TurnSpeed = ANGLE_MIN_TURN_SPEED;
-        }
-
-        if(TurnSpeed < 0.0f && TurnSpeed > -ANGLE_MIN_TURN_SPEED)
-        {
-            TurnSpeed = -ANGLE_MIN_TURN_SPEED;
-        }
-    }
-
-    MaxTurnSpeed = ANGLE_MAX_TURN_SPEED;
 
     if(AbsError < ANGLE_SLOW_DOWN_DEG)
     {
         MaxTurnSpeed =
-            ANGLE_NEAR_MAX_TURN_SPEED +
-            (ANGLE_MAX_TURN_SPEED - ANGLE_NEAR_MAX_TURN_SPEED) *
+            ANGLE_MIN_TURN_SPEED +
+            (ANGLE_MAX_TURN_SPEED - ANGLE_MIN_TURN_SPEED) *
             (AbsError / ANGLE_SLOW_DOWN_DEG);
-
-        MaxTurnSpeed = Gy87_Clamp(MaxTurnSpeed,
-                                  ANGLE_NEAR_MAX_TURN_SPEED,
-                                  ANGLE_MAX_TURN_SPEED);
     }
+    else
+    {
+        MaxTurnSpeed = ANGLE_MAX_TURN_SPEED;
+    }
+
+    MaxTurnSpeed = Gy87_Clamp(MaxTurnSpeed,
+                              ANGLE_MIN_TURN_SPEED,
+                              ANGLE_MAX_TURN_SPEED);
 
     TurnSpeed = Gy87_Clamp(TurnSpeed,
                            -MaxTurnSpeed,
                            MaxTurnSpeed);
 
+    AbsTurnSpeed = Gy87_Abs(TurnSpeed);
+
+    if(AbsError > ANGLE_MIN_TURN_ERROR_DEG &&
+       AbsTurnSpeed > 0.0f &&
+       AbsTurnSpeed < ANGLE_MIN_TURN_SPEED)
+    {
+        TurnSpeed =
+            (TurnSpeed > 0.0f) ?
+            ANGLE_MIN_TURN_SPEED :
+            -ANGLE_MIN_TURN_SPEED;
+    }
+
     RampLimit = ANGLE_SPEED_RAMP;
 
-    if((AngleLastTurnSpeed > 0.0f && TurnSpeed < AngleLastTurnSpeed) ||
-       (AngleLastTurnSpeed < 0.0f && TurnSpeed > AngleLastTurnSpeed))
+    if((AngleLastTurnSpeed > 0.0f && TurnSpeed < 0.0f) ||
+       (AngleLastTurnSpeed < 0.0f && TurnSpeed > 0.0f) ||
+       Gy87_Abs(TurnSpeed) < Gy87_Abs(AngleLastTurnSpeed))
     {
         RampLimit = ANGLE_SPEED_BRAKE_RAMP;
     }
@@ -867,7 +956,8 @@ void Angle_DriveStraight(float TargetYaw, float BaseSpeed)
 
     if(AbsError < ANGLE_STRAIGHT_DEADBAND_DEG)
     {
-        Error = 0.0f;
+        Motor_SetSpeed(BaseSpeed, BaseSpeed);
+        return;
     }
 
     Correction =

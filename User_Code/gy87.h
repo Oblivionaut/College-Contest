@@ -6,9 +6,8 @@
 /*
  * GY87 yaw driver.
  *
- * Yaw is fused from MPU6050 gyro integration and HMC5883L magnetometer
- * heading. The magnetometer gives startup-absolute heading; the gyro keeps
- * short-term response smooth between magnetometer samples.
+ * Yaw is estimated by a Kalman filter: MPU6050 gyro predicts fast motion, and
+ * HMC5883L heading corrects long-term drift when a fresh magnetic sample exists.
  */
 
 /* ========================= */
@@ -36,6 +35,8 @@
 #define GY87_UPDATE_MAX_DT_S            0.30f
 #define GY87_USE_FIXED_DT               0
 #define GY87_ACCEPT_UNKNOWN_MPU_WHO     1
+#define GY87_STARTUP_YAW_DEG            180.0f
+#define GY87_USE_KALMAN_YAW             1
 
 /* ========================= */
 /* MPU6050 configuration      */
@@ -57,11 +58,8 @@
 #define GY87_GYRO_CALIB_SAMPLES         500U
 #define GY87_GYRO_CALIB_DELAY_MS        2U
 
-/* Slow bias learning when the car is nearly still. */
-#define GY87_GYRO_STATIC_LEARN_EN       1
-#define GY87_GYRO_STATIC_DPS            0.55f
-#define GY87_GYRO_BIAS_LEARN_ALPHA      0.00100f
-#define GY87_STATIC_ACC_TOL_G           0.10f
+/* Runtime bias learning is intentionally omitted; calibrate once at startup. */
+#define GY87_GYRO_DEADBAND_ENABLE       0
 
 /* ========================= */
 /* HMC5883L magnetometer      */
@@ -70,7 +68,12 @@
 #define GY87_MAG_UPDATE_PERIOD_MS       15U
 #define GY87_MAG_STARTUP_SAMPLES        8U
 #define GY87_MAG_STARTUP_DELAY_MS       20U
-#define GY87_MAG_FUSION_ALPHA           0.90f
+#define GY87_USE_MAG_STARTUP_YAW        1
+#define GY87_MAG_FUSION_ENABLE          0
+#define GY87_MAG_FUSION_GAIN            0.45f
+#define GY87_MAG_FUSION_MAX_RATE_DPS    1.80f
+#define GY87_MAG_FUSION_MAX_ERROR_DEG   45.0f
+#define GY87_MAG_FUSION_ACC_TOL_G       0.20f
 
 #define GY87_MAG_X_SIGN                 1.0f
 #define GY87_MAG_Y_SIGN                 1.0f
@@ -94,25 +97,28 @@
 /* Angle controller           */
 /* ========================= */
 
-#define ANGLE_KP                        0.055f
-#define ANGLE_KD                        0.18f
-#define ANGLE_LOCK_IN                   5.0f
-#define ANGLE_LOCK_OUT                  9.0f
-#define ANGLE_GYRO_LOCK                 8.0f
-#define ANGLE_CROSS_LOCK_DEG            5.0f
-#define ANGLE_MIN_TURN_SPEED            0.90f
-#define ANGLE_MAX_TURN_SPEED            4.0f
-#define ANGLE_NEAR_MAX_TURN_SPEED       2.2f
-#define ANGLE_SLOW_DOWN_DEG             18.0f
-#define ANGLE_DAMP_LIMIT                0.65f
-#define ANGLE_SPEED_RAMP                0.20f
-#define ANGLE_SPEED_BRAKE_RAMP          0.60f
+#define ANGLE_KP                        0.045f
+#define ANGLE_KD                        0.160f
+#define ANGLE_LOCK_IN                   2.0f
+#define ANGLE_LOCK_OUT                  5.0f
+#define ANGLE_GYRO_LOCK                 2.5f
+#define ANGLE_LOCK_CONFIRM_TICKS        6U
+#define ANGLE_MIN_TURN_SPEED            0.35f
+#define ANGLE_MIN_TURN_ERROR_DEG        2.2f
+#define ANGLE_MAX_TURN_SPEED            1.60f
+#define ANGLE_SLOW_DOWN_DEG             180.0f
+#define ANGLE_SPEED_RAMP                0.030f
+#define ANGLE_SPEED_BRAKE_RAMP          0.35f
+#define ANGLE_BRAKE_START_DEG           80.0f
+#define ANGLE_BRAKE_GYRO_DPS            2.5f
+#define ANGLE_BRAKE_PREDICT_S           0.80f
+#define ANGLE_BRAKE_MARGIN_DEG          4.0f
 #define ANGLE_OUTPUT_SIGN               -1.0f
 
 #define ANGLE_STRAIGHT_KP               0.16f
 #define ANGLE_STRAIGHT_KD               0.06f
 #define ANGLE_STRAIGHT_MAX_CORR         8.0f
-#define ANGLE_STRAIGHT_DEADBAND_DEG     0.4f
+#define ANGLE_STRAIGHT_DEADBAND_DEG     5.0f
 
 /* ========================= */
 /* Status flags               */
@@ -145,6 +151,8 @@ typedef struct
 
     float GyroX_DPS;
     float GyroY_DPS;
+    float GyroZ_Raw_DPS;
+    float GyroZ_Offset_DPS;
     float GyroZ_DPS;
     float YawRate_DPS;
 

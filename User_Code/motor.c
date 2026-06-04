@@ -46,11 +46,20 @@
 /* 目标速度大于该值才启用PWM死区补偿 */
 #define TARGET_DEADZONE_ENABLE 0.85f
 
+/* 小目标低速启动辅助：短脉冲，不连续顶死区 */
+#define LOW_SPEED_KICK_PWM      100
+#define LOW_SPEED_KICK_TICKS    2U
+#define LOW_SPEED_KICK_GAP      12U
+#define LOW_SPEED_KICK_ACTUAL   0.25f
+
 /* 目标为0且实际速度足够小时直接关输出 */
 #define SPEED_STOP_EPS         0.8f
 
 /* PWM输出变化限幅 */
 #define PWM_RAMP_LIMIT         120
+
+/* 非零目标下允许的反向刹车PWM限幅 */
+#define PWM_BRAKE_LIMIT        260
 
 /* 积分限幅 */
 #define I_LIMIT                2000
@@ -89,27 +98,78 @@ PID MotorB;
 
 static float EncoderA_Filter = 0;
 static float EncoderB_Filter = 0;
+int16_t EncoderA_Raw_Debug = 0;
+int16_t EncoderB_Raw_Debug = 0;
 
 static int16_t Last_PWM_A = 0;
 static int16_t Last_PWM_B = 0;
 
 static uint16_t Block_Cnt_A = 0;
 static uint16_t Block_Cnt_B = 0;
+static uint8_t LowSpeedKickCntA = 0;
+static uint8_t LowSpeedKickCntB = 0;
+static uint8_t LowSpeedKickGapA = 0;
+static uint8_t LowSpeedKickGapB = 0;
 
 static void Motor_LimitOutputToTargetDirection(PID *Motor)
 {
     if(Motor->Target > TARGET_ZERO_EPS &&
-       Motor->Out < 0.0f)
+       Motor->Out < -PWM_BRAKE_LIMIT)
     {
-        Motor->Out = 0.0f;
-        Motor->ErrorInt = 0.0f;
+        Motor->Out = -PWM_BRAKE_LIMIT;
     }
 
     if(Motor->Target < -TARGET_ZERO_EPS &&
-       Motor->Out > 0.0f)
+       Motor->Out > PWM_BRAKE_LIMIT)
     {
-        Motor->Out = 0.0f;
-        Motor->ErrorInt = 0.0f;
+        Motor->Out = PWM_BRAKE_LIMIT;
+    }
+}
+
+static void Motor_ApplyLowSpeedKick(PID *Motor,
+                                    uint8_t *KickCnt,
+                                    uint8_t *KickGap)
+{
+    float AbsTarget;
+    float AbsActual;
+
+    AbsTarget = (Motor->Target >= 0.0f) ? Motor->Target : -Motor->Target;
+    AbsActual = (Motor->Actual >= 0.0f) ? Motor->Actual : -Motor->Actual;
+
+    if(AbsTarget <= TARGET_ZERO_EPS ||
+       AbsTarget >= TARGET_DEADZONE_ENABLE ||
+       AbsActual > LOW_SPEED_KICK_ACTUAL)
+    {
+        *KickCnt = 0;
+        *KickGap = 0;
+        return;
+    }
+
+    if(*KickCnt == 0U)
+    {
+        if(*KickGap > 0U)
+        {
+            (*KickGap)--;
+            return;
+        }
+
+        *KickCnt = LOW_SPEED_KICK_TICKS;
+    }
+
+    if(Motor->Target > 0.0f && Motor->Out >= 0.0f)
+    {
+        Motor->Out = LOW_SPEED_KICK_PWM;
+    }
+    else if(Motor->Target < 0.0f && Motor->Out <= 0.0f)
+    {
+        Motor->Out = -LOW_SPEED_KICK_PWM;
+    }
+
+    (*KickCnt)--;
+
+    if(*KickCnt == 0U)
+    {
+        *KickGap = LOW_SPEED_KICK_GAP;
     }
 }
 
@@ -260,6 +320,9 @@ void Motor_Pid(void)
     EncoderA = EncoderA_Get_CNT();
 
     EncoderB = EncoderB_Get_CNT();
+
+    EncoderA_Raw_Debug = (int16_t)EncoderA;
+    EncoderB_Raw_Debug = (int16_t)EncoderB;
 
 
     /************** 编码器异常保护 **************/
@@ -418,6 +481,16 @@ void Motor_Pid(void)
         MotorB.Out = -PWM_MAX;
 
 
+    /************** 小目标低速启动辅助 **************/
+
+    Motor_ApplyLowSpeedKick(&MotorA,
+                            &LowSpeedKickCntA,
+                            &LowSpeedKickGapA);
+    Motor_ApplyLowSpeedKick(&MotorB,
+                            &LowSpeedKickCntB,
+                            &LowSpeedKickGapB);
+
+
     /**************************************************
      *
      * 输出变化限幅
@@ -452,23 +525,27 @@ void Motor_Pid(void)
 
     /************** PWM死区补偿 **************/
 
-    if(MotorA.Target > TARGET_DEADZONE_ENABLE ||
-       MotorA.Target < -TARGET_DEADZONE_ENABLE)
+    if(MotorA.Target > TARGET_DEADZONE_ENABLE)
     {
         if(MotorA.Out > 0 && MotorA.Out < PWM_DEADZONE)
             MotorA.Out = PWM_DEADZONE;
+    }
 
+    if(MotorA.Target < -TARGET_DEADZONE_ENABLE)
+    {
         if(MotorA.Out < 0 && MotorA.Out > -PWM_DEADZONE)
             MotorA.Out = -PWM_DEADZONE;
     }
 
 
-    if(MotorB.Target > TARGET_DEADZONE_ENABLE ||
-       MotorB.Target < -TARGET_DEADZONE_ENABLE)
+    if(MotorB.Target > TARGET_DEADZONE_ENABLE)
     {
         if(MotorB.Out > 0 && MotorB.Out < PWM_DEADZONE)
             MotorB.Out = PWM_DEADZONE;
+    }
 
+    if(MotorB.Target < -TARGET_DEADZONE_ENABLE)
+    {
         if(MotorB.Out < 0 && MotorB.Out > -PWM_DEADZONE)
             MotorB.Out = -PWM_DEADZONE;
     }
@@ -673,6 +750,10 @@ void Motor_Stop(void)
 
     Last_PWM_A = 0;
     Last_PWM_B = 0;
+    LowSpeedKickCntA = 0;
+    LowSpeedKickCntB = 0;
+    LowSpeedKickGapA = 0;
+    LowSpeedKickGapB = 0;
 
     Motor_SetPWM1(0);
 

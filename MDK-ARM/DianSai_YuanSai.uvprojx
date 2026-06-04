@@ -1018,6 +1018,16 @@
               <FilePath>..\User_Code\gy87.h</FilePath>
             </File>
             <File>
+              <FileName>KalmanYaw.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User_Code\KalmanYaw.c</FilePath>
+            </File>
+            <File>
+              <FileName>KalmanYaw.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\User_Code\KalmanYaw.h</FilePath>
+            </File>
+            <File>
               <FileName>Key.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\User_Code\Key.c</FilePath>

@@ -37,6 +37,10 @@
 /* USER CODE BEGIN PD */
 
 #define TEST_TARGET_YAW 100.0f //角度环测试目标角度
+#define GY87_DATA_DEBUG_TEST 0
+#define ANGLE_HOLD_TEST 1
+#define MOTOR_PID_DEBUG_TEST 0
+#define MOTOR_PID_DEBUG_STEP_TICKS 400U
 #define MOTOR_DIRECT_TEST 0
 #define MOTOR_DIRECT_SPEED_A 8.0f
 #define MOTOR_DIRECT_SPEED_B 8.0f
@@ -57,6 +61,17 @@ volatile uint8_t Debug_Print_Flag = 0;
 volatile int16_t Location = 0;
 uint16_t Temp = 0;
 uint8_t Key_Status = 0;
+#if MOTOR_PID_DEBUG_TEST
+static uint16_t MotorPidDebugCnt = 0;
+static uint8_t MotorPidDebugIndex = 0;
+static const float MotorPidDebugTargets[4][2] =
+{
+	{8.0f, 0.0f},
+	{0.0f, 8.0f},
+	{14.0f, 14.0f},
+	{0.0f, 0.0f}
+};
+#endif
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -136,7 +151,15 @@ int main(void)
 	  if(Debug_Print_Flag)
 	  {
 		  Debug_Print_Flag = 0;
+#if GY87_DATA_DEBUG_TEST
+		  OLED_GY87_Data_Debug();
+#elif ANGLE_HOLD_TEST
 		  OLED_Angle_Debug(TEST_TARGET_YAW);
+#elif MOTOR_PID_DEBUG_TEST
+		  OLED_MotorPid_Debug();
+#else
+		  OLED_Tracing_Run_Display();
+#endif
 	  }
 
 //	  OLED_Tracing_Debug();
@@ -200,10 +223,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if(htim->Instance == TIM2)
   {
 	  
+#if ANGLE_HOLD_TEST
+	Angle_Hold(TEST_TARGET_YAW);
+#elif MOTOR_PID_DEBUG_TEST
+	Motor_SetSpeed(MotorPidDebugTargets[MotorPidDebugIndex][0],
+	               MotorPidDebugTargets[MotorPidDebugIndex][1]);
+
+	MotorPidDebugCnt++;
+
+	if(MotorPidDebugCnt >= MOTOR_PID_DEBUG_STEP_TICKS)
+	{
+		MotorPidDebugCnt = 0;
+		MotorPidDebugIndex++;
+
+		if(MotorPidDebugIndex >= 4U)
+		{
+			MotorPidDebugIndex = 0;
+		}
+	}
+#else
 #if MOTOR_DIRECT_TEST
 	Motor_SetSpeed(MOTOR_DIRECT_SPEED_A, MOTOR_DIRECT_SPEED_B);
 #else
-	Angle_Hold(TEST_TARGET_YAW);
+	Tracing_Button_Update();
+	Tracing_Mode_Select(Tracing_GetActiveMode());
+#endif
 #endif
 	  Motor_Pid();
 	test_cnt++;

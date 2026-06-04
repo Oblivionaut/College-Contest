@@ -56,6 +56,16 @@ static int32_t OLED_Debug_ToTenth(float Value)
     return (int32_t)(Value * 10.0f - 0.5f);
 }
 
+static int32_t OLED_Debug_ToCenti(float Value)
+{
+    if(Value >= 0.0f)
+    {
+        return (int32_t)(Value * 100.0f + 0.5f);
+    }
+
+    return (int32_t)(Value * 100.0f - 0.5f);
+}
+
 static void OLED_ShowPaddedLine(uint8_t Line, char *Text)
 {
     char Buf[17];
@@ -75,6 +85,32 @@ static void OLED_ShowPaddedLine(uint8_t Line, char *Text)
 
     Buf[16] = '\0';
     OLED_ShowString(Line, 1, Buf);
+}
+
+static void OLED_GetSignedCenti(float Value,
+                                char *Sign,
+                                int32_t *Whole,
+                                int32_t *Frac)
+{
+    int32_t Centi;
+
+    Centi = OLED_Debug_ToCenti(Value);
+    *Sign = '+';
+
+    if(Centi < 0)
+    {
+        *Sign = '-';
+        Centi = -Centi;
+    }
+
+    *Whole = Centi / 100;
+    *Frac = Centi % 100;
+
+    if(*Whole > 99)
+    {
+        *Whole = 99;
+        *Frac = 99;
+    }
 }
 
 static void OLED_WrapHeadingTenth(int32_t *Tenth)
@@ -256,6 +292,116 @@ static void OLED_FormatMotorDebugLine(char *Buf)
     {
         OLED_FormatSpeedLine(Buf, 'R', MotorA.Actual, MotorB.Actual);
     }
+}
+
+void OLED_MotorPid_Debug(void)
+{
+    char Buf[17];
+
+    snprintf(Buf,
+             17,
+             "T%+03d%+03d",
+             (int)MotorA.Target,
+             (int)MotorB.Target);
+    OLED_ShowPaddedLine(1, Buf);
+
+    snprintf(Buf,
+             17,
+             "R%+03d%+03d",
+             (int)MotorA.Actual,
+             (int)MotorB.Actual);
+    OLED_ShowPaddedLine(2, Buf);
+
+    snprintf(Buf,
+             17,
+             "C%+03d%+03d",
+             (int)EncoderA_Raw_Debug,
+             (int)EncoderB_Raw_Debug);
+    OLED_ShowPaddedLine(3, Buf);
+
+    snprintf(Buf,
+             17,
+             "O%+04d%+04d",
+             (int)MotorA.Out,
+             (int)MotorB.Out);
+    OLED_ShowPaddedLine(4, Buf);
+}
+
+void OLED_GY87_Data_Debug(void)
+{
+    char Buf[17];
+    char Sign;
+    char RawSign;
+    char OffsetSign;
+    int32_t Whole;
+    int32_t Frac;
+    int32_t RawWhole;
+    int32_t RawFrac;
+    int32_t OffsetWhole;
+    int32_t OffsetFrac;
+    int32_t YawTenth;
+    int32_t MagTenth;
+    int32_t AccCenti;
+
+    (void)GY87_Update();
+
+    YawTenth = OLED_Debug_ToTenth(GY87.Yaw);
+    OLED_WrapHeadingTenth(&YawTenth);
+    OLED_GetSignedCenti(GY87.YawRate_DPS, &Sign, &Whole, &Frac);
+
+    snprintf(Buf,
+             17,
+             "Y%03ld.%ld Z%c%ld.%02ld",
+             (long)(YawTenth / 10),
+             (long)(YawTenth % 10),
+             Sign,
+             (long)Whole,
+             (long)Frac);
+    OLED_ShowPaddedLine(1, Buf);
+
+    OLED_GetSignedCenti(GY87.GyroZ_Raw_DPS,
+                        &RawSign,
+                        &RawWhole,
+                        &RawFrac);
+    OLED_GetSignedCenti(GY87.GyroZ_Offset_DPS,
+                        &OffsetSign,
+                        &OffsetWhole,
+                        &OffsetFrac);
+    snprintf(Buf,
+             17,
+             "R%c%ld.%02ld O%c%ld.%02ld",
+             RawSign,
+             (long)RawWhole,
+             (long)RawFrac,
+             OffsetSign,
+             (long)OffsetWhole,
+             (long)OffsetFrac);
+    OLED_ShowPaddedLine(2, Buf);
+
+    AccCenti = OLED_Debug_ToCenti(GY87.AccNorm_g);
+    if(AccCenti < 0)
+    {
+        AccCenti = 0;
+    }
+
+    snprintf(Buf,
+             17,
+             "RG%+06d A%ld.%02ld",
+             (int)GY87.GyroZ,
+             (long)(AccCenti / 100),
+             (long)(AccCenti % 100));
+    OLED_ShowPaddedLine(3, Buf);
+
+    MagTenth = OLED_Debug_ToTenth(GY87.MagYaw);
+    OLED_WrapHeadingTenth(&MagTenth);
+
+    snprintf(Buf,
+             17,
+             "M%03ld.%ld S%04X",
+             (long)(MagTenth / 10),
+             (long)(MagTenth % 10),
+             (unsigned int)GY87.Status);
+    OLED_ShowPaddedLine(4, Buf);
 }
 
 void OLED_Angle_Debug(float TargetYaw)

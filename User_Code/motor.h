@@ -22,6 +22,8 @@ typedef struct
 
 extern PID MotorA;
 extern PID MotorB;
+extern int16_t EncoderA_Raw_Debug;
+extern int16_t EncoderB_Raw_Debug;
 void Motor_Pid(void);
 void Motor_SetSpeed(float SpeedA, float SpeedB);
 void PID_SET(PID * Motor, float KP, float KI, float KD);
