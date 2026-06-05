@@ -1,4 +1,45 @@
 #include "headfile.h"
+
+/* ========================= */
+/* 赛道/循迹重点调参区        */
+/* ========================= */
+/*
+ * 模式说明：
+ * 1=无赛道直行碰线停车，2=无赛道发车循迹一圈，
+ * 3=无赛道发车绕8字一圈，4=无赛道发车绕8字四圈。
+ *
+ * 转角单位为度；正数按当前车体方向右转，负数左转。
+ */
+
+#define TRACK_MAX_SPEED                 11      /* 循迹直道最高速度 */
+#define TRACK_MIN_SPEED                 5       /* 循迹弯道/基础最低速度 */
+#define TRACK_INNER_MIN_SPEED           5       /* 大误差转弯时内侧轮最低速度 */
+#define TRACK_K                         2       /* 循迹差速转向增益 */
+#define TRACK_SPEED_K                   1       /* 误差越大时的减速系数 */
+#define TRACK_TURN_LIMIT                (TRACK_MAX_SPEED - TRACK_MIN_SPEED)
+#define TRACK_LOST_ERROR                10      /* 丢线时按最外侧误差找线 */
+
+#define TRACING_MODE_COUNT              5U      /* 可选模式数量：0~4 */
+#define TRACING_DOUBLE_CLICK_TICKS      60U     /* 双击确认启动的等待周期 */
+#define TRACING_LINE_CONFIRM_TICKS      4U      /* 连续检测到线多少次后确认有线 */
+#define TRACING_NO_LINE_CONFIRM_TICKS   10U     /* 连续丢线多少次后确认无线 */
+#define TRACING_NOTIFY_TICKS            100U    /* 完成提示灯保持周期 */
+#define COURSE_ANGLE_MAX_AGE_MS         250U    /* 姿态数据超过该时间未更新则暂停角度控制 */
+
+#define COURSE_STRAIGHT_SPEED           10.0f   /* 模式1/2/3/4发车后，碰到线前的直行速度 */
+#define COURSE_MODE3_START_TURN_DEG     35.0f   /* 模式3发车后，进入8字前的首次右转角度 */
+#define COURSE_MODE3_RIGHT_TURN_DEG     65.0f   /* 模式3每次右半圈出线后的右转角度 */
+#define COURSE_MODE3_LEFT_TURN_DEG      (-65.0f) /* 模式3每次左半圈出线后的左转角度 */
+#define COURSE_MODE4_START_TURN_DEG     35.0f   /* 模式4发车后，进入8字前的首次右转角度 */
+#define COURSE_MODE4_RIGHT_TURN_DEG     65.0f   /* 模式4每次右半圈出线后的右转角度 */
+#define COURSE_MODE4_LEFT_TURN_DEG      (-65.0f) /* 模式4每次左半圈出线后的左转角度 */
+#define COURSE_MODE2_EXIT_TARGET_OFFSET_DEG 225.0f /* 模式2第一次出线后，目标角=发车角+该角度 */
+#define COURSE_MODE2_EXIT_MIN_YAW_DEG   200.0f  /* 模式2第一次出线前，车身至少要按右转方向相对发车方向转过的角度 */
+#define COURSE_TURN_SETTLE_TICKS        0U      /* 转向完成后停车稳定等待周期；0=立即直行找线 */
+#define COURSE_TURN_TIMEOUT_TICKS       900U    /* 角度转向最长允许周期，防止一直卡在转向阶段 */
+#define COURSE_STRAIGHT_IGNORE_LINE_TICKS 40U   /* 转向后再次发车时，先忽略旧线一小段时间 */
+#define COURSE_TRACE_MIN_LINE_TICKS     400U    /* 至少循迹多少周期后，才允许把丢线当作出线 */
+
 uint8_t Touch_Flag = 0;
 GPIO_TypeDef * GPIOx[8] =
 {
@@ -22,24 +63,10 @@ uint8_t GPIO_PIN_Status[8] = {0};
 
 int8_t GPIO_Error[8] =
 {
-	-7, -5, -2, 0, 0, 2, 5, 7
+	-15, -10, -7, 1, 1, 7, 10, 15
 };
 
 int8_t Last_Error = 0;
-
-#define TRACING_MODE_COUNT              5U
-#define TRACING_DOUBLE_CLICK_TICKS      60U
-#define TRACING_LINE_CONFIRM_TICKS      4U
-#define TRACING_NO_LINE_CONFIRM_TICKS   6U
-#define TRACING_NOTIFY_TICKS            100U
-
-#define COURSE_STRAIGHT_SPEED           14.0f
-#define COURSE_START_TURN_DEG           25.0f
-#define COURSE_RIGHT_TURN_DEG           30.0f
-#define COURSE_LEFT_TURN_DEG            (-30.0f)
-#define COURSE_MODE2_EXIT_TURN_DEG      10.0f
-#define COURSE_TURN_SETTLE_TICKS        60U
-#define COURSE_TRACE_MIN_LINE_TICKS     80U
 
 typedef enum
 {
@@ -68,6 +95,8 @@ static uint8_t CourseLoopCount = 0;
 static uint8_t CourseLoopTarget = 0;
 static uint16_t CourseTraceLineTicks = 0;
 static uint16_t CourseSettleTicks = 0;
+static uint16_t CourseTurnTicks = 0;
+static uint16_t CourseStraightIgnoreLineTicks = 0;
 static uint8_t CourseTraceExitReady = 0;
 static uint8_t CourseStraightUseAngle = 1;
 static uint16_t CourseNotifyTicks = 0;
@@ -87,6 +116,38 @@ static uint8_t Tracing_HasLineFromStatus(void)
     }
 
     return 0;
+}
+
+static uint8_t Course_AngleFresh(void)
+{
+    return GY87_IsFresh(COURSE_ANGLE_MAX_AGE_MS);
+}
+
+static uint8_t Course_Mode2FirstExitAngleReady(void)
+{
+    float DeltaYaw;
+
+    if(!Course_AngleFresh())
+    {
+        return 0;
+    }
+
+    DeltaYaw = Angle_Normalize(GY87_GetYawFast() - CourseStraightYaw);
+    return (DeltaYaw >= COURSE_MODE2_EXIT_MIN_YAW_DEG) ? 1U : 0U;
+}
+
+static float Course_GetRightTurnDeg(void)
+{
+    return (TracingActiveMode == 4U) ?
+           COURSE_MODE4_RIGHT_TURN_DEG :
+           COURSE_MODE3_RIGHT_TURN_DEG;
+}
+
+static float Course_GetLeftTurnDeg(void)
+{
+    return (TracingActiveMode == 4U) ?
+           COURSE_MODE4_LEFT_TURN_DEG :
+           COURSE_MODE3_LEFT_TURN_DEG;
 }
 
 static void Course_Notify(uint8_t Enable)
@@ -184,11 +245,18 @@ static void Course_Finish(void)
     Course_NotifyStart();
 }
 
+static void Course_BeginTurnTo(float TargetYaw, CourseStage_t NextStage)
+{
+    CourseTurnTargetYaw = Angle_Normalize(TargetYaw);
+    CourseStage = NextStage;
+    CourseTurnTicks = 0;
+    Angle_StartTurnTo(CourseTurnTargetYaw);
+}
+
 static void Course_BeginTurn(float DeltaYaw, CourseStage_t NextStage)
 {
-    CourseTurnTargetYaw = Angle_TargetAdd(GY87_GetYawFast(), DeltaYaw);
-    CourseStage = NextStage;
-    Angle_StartTurnTo(CourseTurnTargetYaw);
+    Course_BeginTurnTo(Angle_TargetAdd(GY87_GetYawFast(), DeltaYaw),
+                       NextStage);
 }
 
 static void Course_LoadMode(uint8_t Mode)
@@ -199,6 +267,8 @@ static void Course_LoadMode(uint8_t Mode)
     CourseLoopTarget = 0;
     CourseTraceLineTicks = 0;
     CourseSettleTicks = 0;
+    CourseTurnTicks = 0;
+    CourseStraightIgnoreLineTicks = 0;
     CourseTraceExitReady = 0;
     CourseStraightUseAngle = 1;
     CourseStraightYaw = GY87_GetYawFast();
@@ -222,12 +292,14 @@ static void Course_LoadMode(uint8_t Mode)
 
         case 3:
             CourseLoopTarget = 1;
-            Course_BeginTurn(COURSE_START_TURN_DEG, COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurn(COURSE_MODE3_START_TURN_DEG,
+                             COURSE_STAGE_TURN_RIGHT);
             break;
 
         case 4:
             CourseLoopTarget = 4;
-            Course_BeginTurn(COURSE_START_TURN_DEG, COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurn(COURSE_MODE4_START_TURN_DEG,
+                             COURSE_STAGE_TURN_RIGHT);
             break;
 
         default:
@@ -242,7 +314,10 @@ static void Course_EnterStraightTo(float TargetYaw)
     CourseStage = COURSE_STAGE_STRAIGHT_TO_LINE;
     CourseStraightYaw = Angle_Normalize(TargetYaw);
     CourseStraightUseAngle = 0;
+    CourseStraightIgnoreLineTicks = COURSE_STRAIGHT_IGNORE_LINE_TICKS;
+    Course_ResetLineFilter();
     Angle_ResetController();
+    Motor_SetSpeed(COURSE_STRAIGHT_SPEED, COURSE_STRAIGHT_SPEED);
 }
 
 static void Course_EnterTrace(void)
@@ -255,6 +330,12 @@ static void Course_EnterTrace(void)
 
 static void Course_BeginTurnSettle(void)
 {
+    if(COURSE_TURN_SETTLE_TICKS == 0U)
+    {
+        Course_EnterStraightTo(CourseTurnTargetYaw);
+        return;
+    }
+
     CourseStage = COURSE_STAGE_TURN_SETTLE;
     CourseSettleTicks = COURSE_TURN_SETTLE_TICKS;
     Angle_ResetController();
@@ -263,7 +344,13 @@ static void Course_BeginTurnSettle(void)
 
 static void Course_ControlStraight(uint8_t Mode)
 {
-    if(Course_UpdateLineState())
+    if(CourseStraightIgnoreLineTicks > 0U)
+    {
+        CourseStraightIgnoreLineTicks--;
+        Motor_SetSpeed(COURSE_STRAIGHT_SPEED, COURSE_STRAIGHT_SPEED);
+        return;
+    }
+    else if(Course_UpdateLineState())
     {
         if(Mode == 1U)
         {
@@ -278,6 +365,13 @@ static void Course_ControlStraight(uint8_t Mode)
     {
         if(CourseStraightUseAngle)
         {
+            if(!Course_AngleFresh())
+            {
+                Motor_SetSpeed(COURSE_STRAIGHT_SPEED,
+                               COURSE_STRAIGHT_SPEED);
+                return;
+            }
+
             Angle_DriveStraight(CourseStraightYaw, COURSE_STRAIGHT_SPEED);
         }
         else
@@ -324,6 +418,13 @@ static void Course_ControlMode2Trace(void)
         return;
     }
 
+    if(CourseGapCount == 0U &&
+       !Course_Mode2FirstExitAngleReady())
+    {
+        Normal_Tracing();
+        return;
+    }
+
     CourseGapCount++;
 
     if(CourseGapCount >= 2U)
@@ -332,8 +433,10 @@ static void Course_ControlMode2Trace(void)
     }
     else
     {
-        Course_BeginTurn(COURSE_MODE2_EXIT_TURN_DEG,
-                         COURSE_STAGE_TURN_RIGHT);
+        Course_BeginTurnTo(
+            Angle_TargetAdd(CourseStraightYaw,
+                            COURSE_MODE2_EXIT_TARGET_OFFSET_DEG),
+            COURSE_STAGE_TURN_RIGHT);
     }
 }
 
@@ -348,7 +451,7 @@ static void Course_ControlEightTrace(void)
     if(CourseHalfIndex == 0U)
     {
         CourseHalfIndex = 1;
-        Course_BeginTurn(COURSE_LEFT_TURN_DEG, COURSE_STAGE_TURN_LEFT);
+        Course_BeginTurn(Course_GetLeftTurnDeg(), COURSE_STAGE_TURN_LEFT);
     }
     else
     {
@@ -361,15 +464,33 @@ static void Course_ControlEightTrace(void)
         else
         {
             CourseHalfIndex = 0;
-            Course_BeginTurn(COURSE_RIGHT_TURN_DEG, COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurn(Course_GetRightTurnDeg(), COURSE_STAGE_TURN_RIGHT);
         }
     }
 }
 
 static void Course_ControlTurn(void)
 {
+    if(!Course_AngleFresh())
+    {
+        Motor_SetSpeed(0.0f, 0.0f);
+        return;
+    }
+
+    if(CourseTurnTicks < COURSE_TURN_TIMEOUT_TICKS)
+    {
+        CourseTurnTicks++;
+    }
+
     if(Angle_TurnTask())
     {
+        Course_BeginTurnSettle();
+        return;
+    }
+
+    if(CourseTurnTicks >= COURSE_TURN_TIMEOUT_TICKS)
+    {
+        Angle_StopTurnTask();
         Course_BeginTurnSettle();
     }
 }
@@ -389,6 +510,12 @@ static void Course_ControlTurnSettle(void)
 
 static void Tracing_StartSelectedMode(void)
 {
+    if(TracingSelectedMode != 0U && !Course_AngleFresh())
+    {
+        Motor_SetSpeed(0.0f, 0.0f);
+        return;
+    }
+
     TracingActiveMode = TracingSelectedMode;
     CourseLastMode = 0xFFU;
 }
@@ -422,7 +549,7 @@ void Tracing_Read(void)
 /************************************************
  * 函数名：Tracing_Error_Get
  * 功能  ：获取寻迹误差
- * 返回值：-7 ~ 7
+ * 返回值：按灰度权重返回；丢线时沿上一次方向继续找线
  ************************************************/
 int8_t Tracing_Error_Get(void)
 {
@@ -452,11 +579,11 @@ int8_t Tracing_Error_Get(void)
 		// 根据上一次方向继续找线
 		if(Last_Error >= 0)
 		{
-			return 7;
+			return TRACK_LOST_ERROR;
 		}
 		else
 		{
-			return -7;
+			return -TRACK_LOST_ERROR;
 		}
 	}
 }
@@ -504,14 +631,14 @@ void Normal_Tracing(void)
 
 
 	/******** 转向限幅 ********/
-	if(Turn > (BaseSpeed - TRACK_MIN_SPEED))
+	if(Turn > TRACK_TURN_LIMIT)
 	{
-		Turn = BaseSpeed - TRACK_MIN_SPEED;
+		Turn = TRACK_TURN_LIMIT;
 	}
 
-	if(Turn < -(BaseSpeed - TRACK_MIN_SPEED))
+	if(Turn < -TRACK_TURN_LIMIT)
 	{
-		Turn = -(BaseSpeed - TRACK_MIN_SPEED);
+		Turn = -TRACK_TURN_LIMIT;
 	}
 
 
@@ -522,14 +649,41 @@ void Normal_Tracing(void)
 
 
 	/******** 最低速度保护 ********/
-	if(LeftSpeed < TRACK_MIN_SPEED)
+	if(Turn > 0)
 	{
-		LeftSpeed = TRACK_MIN_SPEED;
-	}
+		if(LeftSpeed < TRACK_INNER_MIN_SPEED)
+		{
+			LeftSpeed = TRACK_INNER_MIN_SPEED;
+		}
 
-	if(RightSpeed < TRACK_MIN_SPEED)
+		if(RightSpeed < TRACK_MIN_SPEED)
+		{
+			RightSpeed = TRACK_MIN_SPEED;
+		}
+	}
+	else if(Turn < 0)
 	{
-		RightSpeed = TRACK_MIN_SPEED;
+		if(LeftSpeed < TRACK_MIN_SPEED)
+		{
+			LeftSpeed = TRACK_MIN_SPEED;
+		}
+
+		if(RightSpeed < TRACK_INNER_MIN_SPEED)
+		{
+			RightSpeed = TRACK_INNER_MIN_SPEED;
+		}
+	}
+	else
+	{
+		if(LeftSpeed < TRACK_MIN_SPEED)
+		{
+			LeftSpeed = TRACK_MIN_SPEED;
+		}
+
+		if(RightSpeed < TRACK_MIN_SPEED)
+		{
+			RightSpeed = TRACK_MIN_SPEED;
+		}
 	}
 
 
@@ -758,6 +912,7 @@ void OLED_Tracing_Run_Display(void)
 {
     char Buf[17];
     int32_t YawInt;
+    int32_t TargetYawInt;
     int8_t Error;
 
     YawInt = (int32_t)(GY87_GetYawFast() + 0.5f);
@@ -765,6 +920,14 @@ void OLED_Tracing_Run_Display(void)
     if(YawInt >= 360)
     {
         YawInt -= 360;
+    }
+
+    TargetYawInt =
+        (int32_t)(Angle_Normalize(CourseTurnTargetYaw) + 0.5f);
+
+    if(TargetYawInt >= 360)
+    {
+        TargetYawInt -= 360;
     }
 
     Error = Tracing_Error_Get();
@@ -787,18 +950,16 @@ void OLED_Tracing_Run_Display(void)
 
     snprintf(Buf,
              17,
-             "Y:%03ld E:%+03d",
+             "Y:%03ld TG:%03ld",
              (long)YawInt,
-             (int)Error);
+             (long)TargetYawInt);
     Tracing_ShowPaddedLine(3, Buf);
 
     snprintf(Buf,
              17,
-             "T%+03d%+03d R%+03d%+03d",
-             (int)MotorA.Target,
-             (int)MotorB.Target,
-             (int)MotorA.Actual,
-             (int)MotorB.Actual);
+             "E:%+03d LN:%u",
+             (int)Error,
+             (unsigned int)CourseLineStable);
     Tracing_ShowPaddedLine(4, Buf);
 }
 

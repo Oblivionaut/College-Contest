@@ -36,14 +36,15 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define TEST_TARGET_YAW 100.0f //角度环测试目标角度
-#define GY87_DATA_DEBUG_TEST 0
-#define ANGLE_HOLD_TEST 1
-#define MOTOR_PID_DEBUG_TEST 0
-#define MOTOR_PID_DEBUG_STEP_TICKS 400U
-#define MOTOR_DIRECT_TEST 0
-#define MOTOR_DIRECT_SPEED_A 8.0f
-#define MOTOR_DIRECT_SPEED_B 8.0f
+/* 调试开关：下面几个测试宏全为0时，运行正常比赛赛道模式。 */
+#define TEST_TARGET_YAW 100.0f          /* ANGLE_HOLD_TEST使用的目标角度 */
+#define GY87_DATA_DEBUG_TEST 0          /* 1=只显示GY87姿态/磁力计调试数据 */
+#define ANGLE_HOLD_TEST 0               /* 1=角度环定点测试 */
+#define MOTOR_PID_DEBUG_TEST 0          /* 1=电机PID阶跃测试 */
+#define MOTOR_PID_DEBUG_STEP_TICKS 400U /* 电机PID测试每个目标保持周期 */
+#define MOTOR_DIRECT_TEST 0             /* 1=绕过赛道状态机，直接给左右轮速度 */
+#define MOTOR_DIRECT_SPEED_A 8.0f       /* MOTOR_DIRECT_TEST左轮速度 */
+#define MOTOR_DIRECT_SPEED_B 8.0f       /* MOTOR_DIRECT_TEST右轮速度 */
 
 /* USER CODE END PD */
 

@@ -49,3 +49,4 @@ diansai_yuansai\gy87.o: ..\User_Code\motor.h
 diansai_yuansai\gy87.o: ../Core/Inc/tim.h
 diansai_yuansai\gy87.o: ..\User_Code\Serial.h
 diansai_yuansai\gy87.o: ..\User_Code\gy87.h
+diansai_yuansai\gy87.o: ..\User_Code\KalmanYaw.h

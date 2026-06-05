@@ -16,16 +16,36 @@ static uint8_t AngleLocked = 0;
 static uint8_t AngleTargetValid = 0;
 static uint8_t AngleStableCount = 0;
 static uint8_t TurnTaskActive = 0;
+static int8_t TurnTaskDirection = 0;
 
 static float AngleLastTarget = 0.0f;
 static float AngleLastTurnSpeed = 0.0f;
 static float TurnTaskTarget = 0.0f;
 static uint32_t MagLastUpdateMs = 0;
 static volatile uint8_t Gy87_UpdateBusy = 0;
+static uint8_t Gy87_I2CFailStreak = 0;
+
+#define GY87_I2C_RECOVER_FAILS          3U
+#define GY87_GYRO_CALIB_MAX_FAILS       30U
 
 static float Gy87_Abs(float Value)
 {
     return (Value < 0.0f) ? -Value : Value;
+}
+
+static int8_t Gy87_SignToInt(float Value)
+{
+    if(Value > 0.0f)
+    {
+        return 1;
+    }
+
+    if(Value < 0.0f)
+    {
+        return -1;
+    }
+
+    return 0;
 }
 
 static float Gy87_Clamp(float Value, float Min, float Max)
@@ -99,6 +119,68 @@ static void Gy87_SetStatus(uint16_t Flag, uint8_t Enable)
     }
 }
 
+static void Gy87_I2C_RecoverBus(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    uint8_t i;
+
+    HAL_I2C_DeInit(&GY87_I2C_HANDLE);
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = GY87_I2C_SCL_PIN | GY87_I2C_SDA_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(GY87_I2C_SCL_PORT, GY87_I2C_SCL_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GY87_I2C_SDA_PORT, GY87_I2C_SDA_PIN, GPIO_PIN_SET);
+    HAL_Delay(1);
+
+    for(i = 0; i < 9U; i++)
+    {
+        HAL_GPIO_WritePin(GY87_I2C_SCL_PORT, GY87_I2C_SCL_PIN, GPIO_PIN_RESET);
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(GY87_I2C_SCL_PORT, GY87_I2C_SCL_PIN, GPIO_PIN_SET);
+        HAL_Delay(1);
+    }
+
+    HAL_GPIO_WritePin(GY87_I2C_SDA_PORT, GY87_I2C_SDA_PIN, GPIO_PIN_RESET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GY87_I2C_SCL_PORT, GY87_I2C_SCL_PIN, GPIO_PIN_SET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GY87_I2C_SDA_PORT, GY87_I2C_SDA_PIN, GPIO_PIN_SET);
+    HAL_Delay(1);
+
+    MX_I2C1_Init();
+}
+
+static void Gy87_RecordI2CResult(HAL_StatusTypeDef Status)
+{
+    GY87.LastI2CStatus = (uint8_t)Status;
+    GY87.LastI2CErrorCode = GY87_I2C_HANDLE.ErrorCode;
+
+    if(Status == HAL_OK)
+    {
+        Gy87_I2CFailStreak = 0;
+        return;
+    }
+
+    GY87.I2CErrorCount++;
+
+    if(Gy87_I2CFailStreak < GY87_I2C_RECOVER_FAILS)
+    {
+        Gy87_I2CFailStreak++;
+    }
+
+    if(Gy87_I2CFailStreak >= GY87_I2C_RECOVER_FAILS)
+    {
+        Gy87_I2CFailStreak = 0;
+        Gy87_I2C_RecoverBus();
+    }
+}
+
 static HAL_StatusTypeDef Gy87_MemWrite(uint16_t DevAddr,
                                        uint8_t Reg,
                                        uint8_t *Data,
@@ -114,13 +196,7 @@ static HAL_StatusTypeDef Gy87_MemWrite(uint16_t DevAddr,
                                Len,
                                GY87_I2C_TIMEOUT_MS);
 
-    GY87.LastI2CStatus = (uint8_t)Status;
-    GY87.LastI2CErrorCode = GY87_I2C_HANDLE.ErrorCode;
-
-    if(Status != HAL_OK)
-    {
-        GY87.I2CErrorCount++;
-    }
+    Gy87_RecordI2CResult(Status);
 
     return Status;
 }
@@ -140,13 +216,7 @@ static HAL_StatusTypeDef Gy87_MemRead(uint16_t DevAddr,
                               Len,
                               GY87_I2C_TIMEOUT_MS);
 
-    GY87.LastI2CStatus = (uint8_t)Status;
-    GY87.LastI2CErrorCode = GY87_I2C_HANDLE.ErrorCode;
-
-    if(Status != HAL_OK)
-    {
-        GY87.I2CErrorCount++;
-    }
+    Gy87_RecordI2CResult(Status);
 
     return Status;
 }
@@ -176,12 +246,10 @@ static uint8_t Gy87_DeviceReady(uint16_t DevAddr)
                                    2U,
                                    GY87_I2C_TIMEOUT_MS);
 
-    GY87.LastI2CStatus = (uint8_t)Status;
-    GY87.LastI2CErrorCode = GY87_I2C_HANDLE.ErrorCode;
+    Gy87_RecordI2CResult(Status);
 
     if(Status != HAL_OK)
     {
-        GY87.I2CErrorCount++;
         return 0;
     }
 
@@ -491,6 +559,7 @@ static void GY87_GyroCalibrate(void)
 {
     uint16_t i;
     uint16_t Count = 0;
+    uint16_t FailCount = 0;
     float SumX = 0.0f;
     float SumY = 0.0f;
     float SumZ = 0.0f;
@@ -501,9 +570,24 @@ static void GY87_GyroCalibrate(void)
 
     for(i = 0; i < 20U; i++)
     {
-        (void)MPU6050_ReadRaw();
+        if(MPU6050_ReadRaw())
+        {
+            FailCount = 0;
+        }
+        else
+        {
+            FailCount++;
+
+            if(FailCount >= GY87_GYRO_CALIB_MAX_FAILS)
+            {
+                return;
+            }
+        }
+
         HAL_Delay(GY87_GYRO_CALIB_DELAY_MS);
     }
+
+    FailCount = 0;
 
     for(i = 0; i < GY87_GYRO_CALIB_SAMPLES; i++)
     {
@@ -513,6 +597,16 @@ static void GY87_GyroCalibrate(void)
             SumY += (float)GY87.GyroY / GY87_GYRO_SENS;
             SumZ += (float)GY87.GyroZ / GY87_GYRO_SENS;
             Count++;
+            FailCount = 0;
+        }
+        else
+        {
+            FailCount++;
+
+            if(FailCount >= GY87_GYRO_CALIB_MAX_FAILS)
+            {
+                break;
+            }
         }
 
         HAL_Delay(GY87_GYRO_CALIB_DELAY_MS);
@@ -533,6 +627,7 @@ void GY87_Init(void)
     memset(&GY87, 0, sizeof(GY87));
 
     Gy87_UpdateBusy = 0;
+    Gy87_I2CFailStreak = 0;
     FusionReady = 0;
     AngleLocked = 0;
     AngleTargetValid = 0;
@@ -743,6 +838,16 @@ uint8_t GY87_IsReady(void)
     return (FusionReady != 0U) ? 1U : 0U;
 }
 
+uint8_t GY87_IsFresh(uint32_t MaxAgeMs)
+{
+    if(!GY87_IsReady())
+    {
+        return 0;
+    }
+
+    return ((HAL_GetTick() - GY87.LastUpdateMs) <= MaxAgeMs) ? 1U : 0U;
+}
+
 void HMC5883_Read(void)
 {
     (void)HMC5883_ReadRaw();
@@ -888,6 +993,14 @@ float Angle_CalcHoldSpeed(float TargetYaw)
                            -MaxTurnSpeed,
                            MaxTurnSpeed);
 
+    if(TurnTaskActive &&
+       TurnTaskDirection != 0 &&
+       AbsError > ANGLE_LOCK_OUT &&
+       TurnSpeed * (float)TurnTaskDirection < 0.0f)
+    {
+        TurnSpeed = ANGLE_MIN_TURN_SPEED * (float)TurnTaskDirection;
+    }
+
     AbsTurnSpeed = Gy87_Abs(TurnSpeed);
 
     if(AbsError > ANGLE_MIN_TURN_ERROR_DEG &&
@@ -976,6 +1089,9 @@ void Angle_StartTurn(float DeltaYaw)
 {
     TurnTaskTarget = Angle_TargetAdd(GY87.Yaw, DeltaYaw);
     TurnTaskActive = 1;
+    TurnTaskDirection =
+        Gy87_SignToInt(Angle_Error(TurnTaskTarget, GY87.Yaw) *
+                       ANGLE_OUTPUT_SIGN);
     Angle_ResetController();
 }
 
@@ -983,6 +1099,9 @@ void Angle_StartTurnTo(float TargetYaw)
 {
     TurnTaskTarget = Angle_Normalize(TargetYaw);
     TurnTaskActive = 1;
+    TurnTaskDirection =
+        Gy87_SignToInt(Angle_Error(TurnTaskTarget, GY87.Yaw) *
+                       ANGLE_OUTPUT_SIGN);
     Angle_ResetController();
 }
 
@@ -998,6 +1117,7 @@ uint8_t Angle_TurnTask(void)
     if(Angle_IsLocked())
     {
         TurnTaskActive = 0;
+        TurnTaskDirection = 0;
         return 1;
     }
 
@@ -1007,6 +1127,7 @@ uint8_t Angle_TurnTask(void)
 void Angle_StopTurnTask(void)
 {
     TurnTaskActive = 0;
+    TurnTaskDirection = 0;
     Angle_ResetController();
     Motor_SetSpeed(0.0f, 0.0f);
 }

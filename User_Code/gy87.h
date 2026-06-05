@@ -94,31 +94,36 @@
 #define GY87_MAG_DECLINATION_DEG        0.0f
 
 /* ========================= */
-/* Angle controller           */
+/* 角度环重点调参区           */
 /* ========================= */
+/*
+ * Angle_TurnTask() 只有在角度误差进入 ANGLE_LOCK_IN，
+ * 且角速度低于 ANGLE_GYRO_LOCK，并连续满足 ANGLE_LOCK_CONFIRM_TICKS
+ * 个控制周期后，才会认为转向完成。
+ */
 
-#define ANGLE_KP                        0.045f
-#define ANGLE_KD                        0.160f
-#define ANGLE_LOCK_IN                   2.0f
-#define ANGLE_LOCK_OUT                  5.0f
-#define ANGLE_GYRO_LOCK                 2.5f
-#define ANGLE_LOCK_CONFIRM_TICKS        6U
-#define ANGLE_MIN_TURN_SPEED            0.35f
-#define ANGLE_MIN_TURN_ERROR_DEG        2.2f
-#define ANGLE_MAX_TURN_SPEED            1.60f
-#define ANGLE_SLOW_DOWN_DEG             180.0f
-#define ANGLE_SPEED_RAMP                0.030f
-#define ANGLE_SPEED_BRAKE_RAMP          0.35f
-#define ANGLE_BRAKE_START_DEG           80.0f
-#define ANGLE_BRAKE_GYRO_DPS            2.5f
-#define ANGLE_BRAKE_PREDICT_S           0.80f
-#define ANGLE_BRAKE_MARGIN_DEG          4.0f
-#define ANGLE_OUTPUT_SIGN               -1.0f
+#define ANGLE_KP                        0.045f  /* 角度误差比例增益，越大转得越积极 */
+#define ANGLE_KD                        0.160f  /* 陀螺角速度阻尼，越大越抑制冲过头 */
+#define ANGLE_LOCK_IN                   1.0f    /* 转向完成判定的角度误差范围，越小越准 */
+#define ANGLE_LOCK_OUT                  5.0f    /* 已锁定后允许保持停车的误差范围 */
+#define ANGLE_GYRO_LOCK                 2.5f    /* 完成判定时允许的最大角速度 */
+#define ANGLE_LOCK_CONFIRM_TICKS        6U      /* 连续满足完成条件多少次才算真正完成 */
+#define ANGLE_MIN_TURN_SPEED            0.35f   /* 远离目标时允许补的最低转向速度 */
+#define ANGLE_MIN_TURN_ERROR_DEG        2.2f    /* 误差大于该值才启用最低转向速度 */
+#define ANGLE_MAX_TURN_SPEED            1.60f   /* 角度环最大转向速度目标 */
+#define ANGLE_SLOW_DOWN_DEG             180.0f  /* 误差小于该角度后开始按距离逐步降速 */
+#define ANGLE_SPEED_RAMP                0.030f  /* 加速时每周期最大增量，越小起转越柔 */
+#define ANGLE_SPEED_BRAKE_RAMP          0.35f   /* 减速或反向时每周期最大变化量 */
+#define ANGLE_BRAKE_START_DEG           80.0f   /* 误差小于该角度后允许预测制动 */
+#define ANGLE_BRAKE_GYRO_DPS            2.5f    /* 角速度大于该值才触发预测制动 */
+#define ANGLE_BRAKE_PREDICT_S           0.80f   /* 预测制动使用的停车时间估计 */
+#define ANGLE_BRAKE_MARGIN_DEG          4.0f    /* 预测制动额外保留角度 */
+#define ANGLE_OUTPUT_SIGN               -1.0f   /* 角度环输出方向，整车反向时只改这里 */
 
-#define ANGLE_STRAIGHT_KP               0.16f
-#define ANGLE_STRAIGHT_KD               0.06f
-#define ANGLE_STRAIGHT_MAX_CORR         8.0f
-#define ANGLE_STRAIGHT_DEADBAND_DEG     5.0f
+#define ANGLE_STRAIGHT_KP               0.16f   /* 直行航向保持比例增益 */
+#define ANGLE_STRAIGHT_KD               0.06f   /* 直行航向保持角速度阻尼 */
+#define ANGLE_STRAIGHT_MAX_CORR         8.0f    /* 直行时左右轮最大差速修正 */
+#define ANGLE_STRAIGHT_DEADBAND_DEG     5.0f    /* 直行航向误差小于该值时不修正 */
 
 /* ========================= */
 /* Status flags               */
@@ -196,6 +201,7 @@ float GY87_GetYawFast(void);
 void GY87_SetYaw(float Yaw);
 uint8_t GY87_ResetYawToMag(void);
 uint8_t GY87_IsReady(void);
+uint8_t GY87_IsFresh(uint32_t MaxAgeMs);
 
 float Angle_Normalize(float Angle);
 float Angle_Error(float Target, float Current);

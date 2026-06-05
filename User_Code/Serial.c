@@ -4,6 +4,8 @@
 uint8_t Serial_RxData;
 uint8_t Serial_RxFlag;
 
+#define SERIAL_TX_TIMEOUT_MS 2U
+
 /**
  * @brief  串口发送一个字节
  * @param  Byte 要发送的字节（0~255）
@@ -11,8 +13,7 @@ uint8_t Serial_RxFlag;
  */
 void Serial_SendByte(uint8_t Byte)
 {
-    /* HAL库UART发送（超时100ms，适配Cube配置的UART4） */
-    HAL_UART_Transmit(&huart4, &Byte, 1, 100);
+    HAL_UART_Transmit(&huart4, &Byte, 1, SERIAL_TX_TIMEOUT_MS);
 }
 
 /**
@@ -100,7 +101,7 @@ void Serial_Printf(char *format, ...)
     char String[100]; // 缓存格式化后的字符串
     va_list arg;      // 可变参数列表
     va_start(arg, format);
-    vsprintf(String, format, arg); // 格式化字符串到数组
+    vsnprintf(String, sizeof(String), format, arg); // 格式化字符串到数组
     va_end(arg);
     Serial_SendString(String); // 发送格式化结果
 }
