@@ -11,7 +11,7 @@
  * 转角单位为度；正数按当前车体方向右转，负数左转。
  */
 
-#define TRACK_MAX_SPEED                 11      /* 循迹直道最高速度 */
+#define TRACK_MAX_SPEED                 12      /* 循迹直道最高速度 */
 #define TRACK_MIN_SPEED                 5       /* 循迹弯道/基础最低速度 */
 #define TRACK_INNER_MIN_SPEED           5       /* 大误差转弯时内侧轮最低速度 */
 #define TRACK_K                         2       /* 循迹差速转向增益 */
@@ -28,13 +28,12 @@
 
 #define COURSE_STRAIGHT_SPEED           10.0f   /* 模式1/2/3/4发车后，碰到线前的直行速度 */
 #define COURSE_MODE3_START_TURN_DEG     35.0f   /* 模式3发车后，进入8字前的首次右转角度 */
-#define COURSE_MODE3_RIGHT_TURN_DEG     65.0f   /* 模式3每次右半圈出线后的右转角度 */
-#define COURSE_MODE3_LEFT_TURN_DEG      (-65.0f) /* 模式3每次左半圈出线后的左转角度 */
+#define COURSE_MODE3_EXIT_LEFT_TURN_DEG 48.0f   /* 模式3出线后，在发车角+220基础上继续左转的角度 */
 #define COURSE_MODE4_START_TURN_DEG     35.0f   /* 模式4发车后，进入8字前的首次右转角度 */
-#define COURSE_MODE4_RIGHT_TURN_DEG     65.0f   /* 模式4每次右半圈出线后的右转角度 */
-#define COURSE_MODE4_LEFT_TURN_DEG      (-65.0f) /* 模式4每次左半圈出线后的左转角度 */
-#define COURSE_MODE2_EXIT_TARGET_OFFSET_DEG 225.0f /* 模式2第一次出线后，目标角=发车角+该角度 */
-#define COURSE_MODE2_EXIT_MIN_YAW_DEG   200.0f  /* 模式2第一次出线前，车身至少要按右转方向相对发车方向转过的角度 */
+#define COURSE_MODE4_EXIT_LEFT_TURN_DEG 46.0f   /* 模式4出线后，在发车角+220基础上继续左转的角度 */
+#define COURSE_MODE4_EXIT_RIGHT_TURN_DEG 31.0f  /* 模式4出线后，相对发车角右转的角度，这个角度要小于第一次发车角度 */
+#define COURSE_MODE2_EXIT_TARGET_OFFSET_DEG 220.0f /* 模式2第一次出线后，目标角=发车角+该角度 */
+#define COURSE_MODE2_EXIT_MIN_YAW_DEG   180.0f  /* 模式2第一次出线前，车身至少要按右转方向相对发车方向转过的角度 */
 #define COURSE_TURN_SETTLE_TICKS        0U      /* 转向完成后停车稳定等待周期；0=立即直行找线 */
 #define COURSE_TURN_TIMEOUT_TICKS       900U    /* 角度转向最长允许周期，防止一直卡在转向阶段 */
 #define COURSE_STRAIGHT_IGNORE_LINE_TICKS 40U   /* 转向后再次发车时，先忽略旧线一小段时间 */
@@ -100,6 +99,7 @@ static uint16_t CourseStraightIgnoreLineTicks = 0;
 static uint8_t CourseTraceExitReady = 0;
 static uint8_t CourseStraightUseAngle = 1;
 static uint16_t CourseNotifyTicks = 0;
+static float CourseStartYaw = 0.0f;
 static float CourseStraightYaw = 0.0f;
 static float CourseTurnTargetYaw = 0.0f;
 
@@ -136,18 +136,24 @@ static uint8_t Course_Mode2FirstExitAngleReady(void)
     return (DeltaYaw >= COURSE_MODE2_EXIT_MIN_YAW_DEG) ? 1U : 0U;
 }
 
-static float Course_GetRightTurnDeg(void)
+static float Course_GetMode3ExitTargetYaw(void)
 {
-    return (TracingActiveMode == 4U) ?
-           COURSE_MODE4_RIGHT_TURN_DEG :
-           COURSE_MODE3_RIGHT_TURN_DEG;
+    return Angle_TargetAdd(CourseStartYaw,
+                           COURSE_MODE2_EXIT_TARGET_OFFSET_DEG -
+                           COURSE_MODE3_EXIT_LEFT_TURN_DEG);
 }
 
-static float Course_GetLeftTurnDeg(void)
+static float Course_GetMode4LeftTargetYaw(void)
 {
-    return (TracingActiveMode == 4U) ?
-           COURSE_MODE4_LEFT_TURN_DEG :
-           COURSE_MODE3_LEFT_TURN_DEG;
+    return Angle_TargetAdd(CourseStartYaw,
+                           COURSE_MODE2_EXIT_TARGET_OFFSET_DEG -
+                           COURSE_MODE4_EXIT_LEFT_TURN_DEG);
+}
+
+static float Course_GetMode4RightTargetYaw(void)
+{
+    return Angle_TargetAdd(CourseStartYaw,
+                           COURSE_MODE4_EXIT_RIGHT_TURN_DEG);
 }
 
 static void Course_Notify(uint8_t Enable)
@@ -253,12 +259,6 @@ static void Course_BeginTurnTo(float TargetYaw, CourseStage_t NextStage)
     Angle_StartTurnTo(CourseTurnTargetYaw);
 }
 
-static void Course_BeginTurn(float DeltaYaw, CourseStage_t NextStage)
-{
-    Course_BeginTurnTo(Angle_TargetAdd(GY87_GetYawFast(), DeltaYaw),
-                       NextStage);
-}
-
 static void Course_LoadMode(uint8_t Mode)
 {
     CourseGapCount = 0;
@@ -271,8 +271,9 @@ static void Course_LoadMode(uint8_t Mode)
     CourseStraightIgnoreLineTicks = 0;
     CourseTraceExitReady = 0;
     CourseStraightUseAngle = 1;
-    CourseStraightYaw = GY87_GetYawFast();
-    CourseTurnTargetYaw = CourseStraightYaw;
+    CourseStartYaw = GY87_GetYawFast();
+    CourseStraightYaw = CourseStartYaw;
+    CourseTurnTargetYaw = CourseStartYaw;
     Course_NotifyStop();
     Course_ResetLineFilter();
     Angle_StopTurnTask();
@@ -292,14 +293,18 @@ static void Course_LoadMode(uint8_t Mode)
 
         case 3:
             CourseLoopTarget = 1;
-            Course_BeginTurn(COURSE_MODE3_START_TURN_DEG,
-                             COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurnTo(
+                Angle_TargetAdd(CourseStartYaw,
+                                COURSE_MODE3_START_TURN_DEG),
+                COURSE_STAGE_TURN_RIGHT);
             break;
 
         case 4:
             CourseLoopTarget = 4;
-            Course_BeginTurn(COURSE_MODE4_START_TURN_DEG,
-                             COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurnTo(
+                Angle_TargetAdd(CourseStartYaw,
+                                COURSE_MODE4_START_TURN_DEG),
+                COURSE_STAGE_TURN_RIGHT);
             break;
 
         default:
@@ -358,6 +363,7 @@ static void Course_ControlStraight(uint8_t Mode)
         }
         else
         {
+            Course_NotifyStart();
             Course_EnterTrace();
         }
     }
@@ -426,6 +432,7 @@ static void Course_ControlMode2Trace(void)
     }
 
     CourseGapCount++;
+    Course_NotifyStart();
 
     if(CourseGapCount >= 2U)
     {
@@ -448,10 +455,22 @@ static void Course_ControlEightTrace(void)
         return;
     }
 
+    Course_NotifyStart();
+
     if(CourseHalfIndex == 0U)
     {
         CourseHalfIndex = 1;
-        Course_BeginTurn(Course_GetLeftTurnDeg(), COURSE_STAGE_TURN_LEFT);
+
+        if(TracingActiveMode == 3U)
+        {
+            Course_BeginTurnTo(Course_GetMode3ExitTargetYaw(),
+                               COURSE_STAGE_TURN_LEFT);
+        }
+        else
+        {
+            Course_BeginTurnTo(Course_GetMode4LeftTargetYaw(),
+                               COURSE_STAGE_TURN_LEFT);
+        }
     }
     else
     {
@@ -464,7 +483,8 @@ static void Course_ControlEightTrace(void)
         else
         {
             CourseHalfIndex = 0;
-            Course_BeginTurn(Course_GetRightTurnDeg(), COURSE_STAGE_TURN_RIGHT);
+            Course_BeginTurnTo(Course_GetMode4RightTargetYaw(),
+                               COURSE_STAGE_TURN_RIGHT);
         }
     }
 }
